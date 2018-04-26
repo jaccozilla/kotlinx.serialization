@@ -317,7 +317,7 @@ data class JSON(
         override fun <T : Enum<T>> readEnumValue(enumClass: KClass<T>): T = enumFromName(enumClass, p.takeStr())
     }
 
-    private class Parser(val source: String) {
+    internal class Parser(val source: String) {
         var curPos: Int = 0 // position in source
 
         // updated by nextToken
