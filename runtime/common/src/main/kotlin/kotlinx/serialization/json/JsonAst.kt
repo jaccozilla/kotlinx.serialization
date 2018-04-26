@@ -22,11 +22,19 @@ sealed class JsonElement
 
 object JsonNull : JsonElement()
 
-data class JsonValue(val value: String) : JsonElement()
+data class JsonValue(val content: String) : JsonElement() {
+    val asInt: Int
+        get() = content.toInt()
 
-data class JsonObject(val values: Map<String, JsonElement>) : JsonElement()
+    val asBoolean: Boolean
+        get() = content.toBoolean()
 
-data class JsonArray(val values: List<JsonElement>) : JsonElement()
+    inline val str: String get() = content
+}
+
+data class JsonObject(val content: Map<String, JsonElement>) : JsonElement(), Map<String, JsonElement> by content
+
+data class JsonArray(val content: List<JsonElement>) : JsonElement(), List<JsonElement> by content
 
 
 class JsonAstReader(val input: String) {
