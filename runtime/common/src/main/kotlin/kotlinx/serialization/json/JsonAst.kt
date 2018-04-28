@@ -16,8 +16,6 @@
 
 package kotlinx.serialization.json
 
-import kotlinx.serialization.json.JSON.Parser
-
 sealed class JsonElement
 
 object JsonNull : JsonElement()
@@ -32,18 +30,17 @@ data class JsonValue(val content: String) : JsonElement() {
     inline val str: String get() = content
 }
 
-data class JsonObject(val content: Map<String, JsonElement>) : JsonElement(), Map<String, JsonElement> by content
+data class JsonObject(val content: Map<String, JsonElement>) : JsonElement(), Map<String, JsonElement> by content {
+    fun getAsValue(key: String): JsonValue? = content[key] as? JsonValue
+}
 
-data class JsonArray(val content: List<JsonElement>) : JsonElement(), List<JsonElement> by content
+data class JsonArray(val content: List<JsonElement>) : JsonElement(), List<JsonElement> by content {
+    fun getAsValue(index: Int): JsonValue? = content.getOrNull(index) as? JsonValue
+}
 
 
 class JsonAstReader(val input: String) {
     private val p: Parser = Parser(input)
-
-    private inline fun Parser.requireTc(expected: Byte, lazyErrorMsg: () -> String) {
-        if (tc != expected)
-            fail(curPos, lazyErrorMsg())
-    }
 
     private fun readObject(): JsonElement {
         p.requireTc(TC_BEGIN_OBJ) { "Expected start of object" }
@@ -97,23 +94,4 @@ class JsonAstReader(val input: String) {
         p.requireTc(TC_EOF) { "Input wasn't consumed fully" }
         return r
     }
-}
-
-// todo: move common things
-private const val TC_OTHER: Byte = 0
-private const val TC_STRING: Byte = 1
-private const val TC_STRING_ESC: Byte = 2
-private const val TC_WS: Byte = 3
-private const val TC_COMMA: Byte = 4
-private const val TC_COLON: Byte = 5
-private const val TC_BEGIN_OBJ: Byte = 6
-private const val TC_END_OBJ: Byte = 7
-private const val TC_BEGIN_LIST: Byte = 8
-private const val TC_END_LIST: Byte = 9
-private const val TC_NULL: Byte = 10
-private const val TC_INVALID: Byte = 11
-private const val TC_EOF: Byte = 12
-
-private fun fail(pos: Int, msg: String): Nothing {
-    throw IllegalArgumentException("JSON at $pos: $msg")
 }
