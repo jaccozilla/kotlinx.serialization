@@ -32,11 +32,13 @@ buildscript {
         mavenLocal()
         maven { url eapChannel }
         maven { url serializationRepo }
+        maven { url "https://dl.bintray.com/jetbrains/kotlin-native-dependencies" }
     }
 
     dependencies {
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$compilerVersion"
         classpath "org.jetbrains.kotlinx:kotlinx-gradle-serialization-plugin:$serializationPluginVersion"
+        classpath "org.jetbrains.kotlin:kotlin-native-gradle-plugin:${property('konan.version')}"
 
         classpath 'com.google.protobuf:protobuf-gradle-plugin:0.8.2'
 
@@ -72,6 +74,8 @@ allprojects {
 apply plugin: 'kotlin'
 
 subprojects {
+    if (project.name == "native") return
+
     apply plugin: 'kotlinx-serialization'
 
     apply plugin: 'maven-publish'

@@ -1,0 +1,20 @@
+apply plugin: 'konan'
+
+konanArtifacts {
+    library('jsonparser') {
+        enableMultiplatform true
+        srcDir 'src'
+        srcDir project(':jsonparser').file('src')
+    }
+}
+
+apply plugin: 'maven-publish'
+
+def localMavenRepo = "file://${new File(System.properties['user.home'] as String)}/.m2-kotlin-native"
+publishing {
+    repositories {
+        maven {
+            url = localMavenRepo
+        }
+    }
+}
