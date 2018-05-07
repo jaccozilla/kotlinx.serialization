@@ -42,7 +42,7 @@ buildscript {
 
         classpath 'com.google.protobuf:protobuf-gradle-plugin:0.8.2'
 
-        classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.7.3'
+        classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.8.1-SNAPSHOT'
     }
 }
 
@@ -121,23 +121,26 @@ subprojects {
         }
     }
 
-    bintray {
-        user = project.hasProperty('bintrayUser') ? project.property('bintrayUser') : System.getenv('BINTRAY_USER')
-        key = project.hasProperty('bintrayApiKey') ? project.property('bintrayApiKey') : System.getenv('BINTRAY_API_KEY')
-        publications = ['mavenProject']
-        pkg {
-            repo = 'kotlinx'
-            name = 'kotlinx.serialization.runtime'
-            userOrg = 'kotlin'
-            licenses = ['Apache-2.0']
-            vcsUrl = 'https://github.com/Kotlin/kotlinx.serialization'
-            websiteUrl = 'https://github.com/Kotlin/kotlinx.serialization'
-            issueTrackerUrl = 'https://github.com/Kotlin/kotlinx.serialization/issues'
+    apply plugin: 'com.jfrog.bintray'
 
-            githubRepo = 'Kotlin/kotlinx.serialization'
-            version {
-                name = project.version
-            }
-        }
-    }
+    // todo:resolve issue with components.java
+//    bintray {
+//        user = project.hasProperty('bintrayUser') ? project.property('bintrayUser') : System.getenv('BINTRAY_USER')
+//        key = project.hasProperty('bintrayApiKey') ? project.property('bintrayApiKey') : System.getenv('BINTRAY_API_KEY')
+//        publications = ['mavenProject']
+//        pkg {
+//            repo = 'kotlinx'
+//            name = 'kotlinx.serialization.runtime'
+//            userOrg = 'kotlin'
+//            licenses = ['Apache-2.0']
+//            vcsUrl = 'https://github.com/Kotlin/kotlinx.serialization'
+//            websiteUrl = 'https://github.com/Kotlin/kotlinx.serialization'
+//            issueTrackerUrl = 'https://github.com/Kotlin/kotlinx.serialization/issues'
+//
+//            githubRepo = 'Kotlin/kotlinx.serialization'
+//            version {
+//                name = project.version
+//            }
+//        }
+//    }
 }
