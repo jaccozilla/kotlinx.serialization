@@ -1,0 +1,32 @@
+buildscript {
+    ext.serializationRepo = "https://dl.bintray.com/sandwwraith/generic/"
+    ext.nativeLibsRepo = 'https://dl.bintray.com/jetbrains/kotlin-native-dependencies/common-libs'
+
+    repositories {
+        jcenter()
+        maven { url "https://dl.bintray.com/jetbrains/kotlin-native-dependencies" }
+    }
+
+    dependencies {
+        classpath "org.jetbrains.kotlin:kotlin-native-gradle-plugin:0.7"
+    }
+}
+
+repositories {
+    maven { url serializationRepo }
+}
+
+apply plugin: 'konan'
+
+konan.targets = ["ios_arm64", "ios_x64"]
+
+konanArtifacts {
+    program('app') {
+        srcDir 'src/main/kotlin'
+
+        dependencies {
+            artifactapp "org.jetbrains.kotlinx:jsonparser:0.5.0"
+            artifactapp "io.ktor.common.client:http_client_native:0.1.3"
+        }
+    }
+}
