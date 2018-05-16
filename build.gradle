@@ -15,6 +15,8 @@
  */
 
 buildscript {
+    def deployNative = property('native.deploy') == 'true'
+
     if (project.hasProperty("bootstrap")) {
         ext.compilerVersion = '1.2-SNAPSHOT'
         ext.librariesVersion = '1.2-SNAPSHOT'
@@ -29,7 +31,6 @@ buildscript {
 
     repositories {
         jcenter()
-        mavenLocal()
         maven { url eapChannel }
         maven { url serializationRepo }
         maven { url "https://dl.bintray.com/jetbrains/kotlin-native-dependencies" }
@@ -42,7 +43,12 @@ buildscript {
 
         classpath 'com.google.protobuf:protobuf-gradle-plugin:0.8.2'
 
-        classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.8.2-SNAPSHOT'
+        if (deployNative) {
+            // use patched version which supports Gradle metadata, but is not compatible with Maven publications
+            classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.8.2-SNAPSHOT'
+        } else {
+            classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.7.3'
+        }
     }
 }
 
