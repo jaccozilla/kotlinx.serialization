@@ -79,7 +79,6 @@ subprojects {
     apply plugin: 'kotlinx-serialization'
 
     apply plugin: 'maven-publish'
-    apply plugin: 'com.jfrog.bintray'
 
     def varintName = ""
 
@@ -120,6 +119,8 @@ subprojects {
             }
         }
     }
+
+    apply plugin: 'com.jfrog.bintray'
 
     bintray {
         user = project.hasProperty('bintrayUser') ? project.property('bintrayUser') : System.getenv('BINTRAY_USER')
