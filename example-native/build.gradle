@@ -1,6 +1,5 @@
 buildscript {
-    ext.serializationRepo = "https://dl.bintray.com/sandwwraith/generic/"
-    ext.nativeLibsRepo = 'https://dl.bintray.com/jetbrains/kotlin-native-dependencies/common-libs'
+    ext.serializationRepo = "https://dl.bintray.com/kotlin/kotlinx/"
 
     repositories {
         jcenter()
@@ -23,7 +22,7 @@ konanArtifacts {
         srcDir 'src'
 
         dependencies {
-            artifactsample "org.jetbrains.kotlinx:jsonparser:0.5.0"
+            artifactsample "org.jetbrains.kotlinx:jsonparser-native:0.5.0"
         }
     }
 }
