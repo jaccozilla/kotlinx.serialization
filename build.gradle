@@ -31,6 +31,7 @@ buildscript {
 
     repositories {
         jcenter()
+        mavenLocal()
         maven { url eapChannel }
         maven { url serializationRepo }
         maven { url "https://dl.bintray.com/jetbrains/kotlin-native-dependencies" }

@@ -198,13 +198,15 @@ data class JSON(
         fun printQuoted(value: String): Unit = sb.printQuoted(value)
     }
 
-    private inner class JsonInput(val mode: Mode, val p: Parser) : ElementValueInput() {
-        var curIndex = 0
-        var entryIndex = 0
+    inner class JsonInput internal constructor(private val mode: Mode, private val p: Parser) : ElementValueInput() {
+        private var curIndex = 0
+        private var entryIndex = 0
 
         init {
             context = this@JSON.context
         }
+
+        fun readAsTree(): JsonElement = JsonTreeParser(p).read()
 
         override val updateMode: UpdateMode
             get() = this@JSON.updateMode
@@ -303,7 +305,7 @@ data class JSON(
 
 // ----------- JSON utilities -----------
 
-private enum class Mode(val begin: Char, val end: Char) {
+internal enum class Mode(val begin: Char, val end: Char) {
     OBJ(BEGIN_OBJ, END_OBJ),
     LIST(BEGIN_LIST, END_LIST),
     MAP(BEGIN_OBJ, END_OBJ),
