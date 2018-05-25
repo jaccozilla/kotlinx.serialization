@@ -67,9 +67,16 @@ data class JSON(
     // Handrolled EnumMap until we will have one in stdlib
     private val modeCache = arrayOfNulls<JsonOutput>(Mode.values().size)
 
-    private inner class JsonOutput(val mode: Mode, val w: Composer) : ElementValueOutput() {
+    inner class JsonOutput internal constructor(private val mode: Mode, private val w: Composer) : ElementValueOutput() {
         init {
             context = this@JSON.context
+        }
+
+        /**
+         * Doesn't respect indentation or quoting settings
+         */
+        fun writeTree(tree: JsonElement) {
+            w.sb.append(tree.toString())
         }
 
         private var forceStr: Boolean = false
@@ -167,7 +174,7 @@ data class JSON(
         }
     }
 
-    inner class Composer(private val sb: StringBuilder) {
+    internal inner class Composer(internal val sb: StringBuilder) {
         private var level = 0
         fun indent() { level++ }
         fun unIndent() { level-- }
