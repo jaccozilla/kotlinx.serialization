@@ -16,6 +16,7 @@
 
 package kotlinx.serialization.protobuf
 
+import kotlinx.serialization.shouldBe
 import kotlin.test.Test
 
 class ProtobufReaderTest {
@@ -65,5 +66,10 @@ class ProtobufReaderTest {
     @Test
     fun mergeListIfSplitByAnotherField() {
         ProtoBuf.loads<TestIntWithList>("500308960150045005") shouldBe TestIntWithList(150, listOf(3, 4, 5))
+    }
+
+    @Test
+    fun readByteArray() {
+        ProtoBuf.loads<TestByteArray>("0a0300807f") shouldBe t7
     }
 }

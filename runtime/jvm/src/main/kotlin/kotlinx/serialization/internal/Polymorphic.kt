@@ -54,7 +54,8 @@ internal object ClassSerialCache {
 
 internal val allPrimitives: List<KSerializer<*>> = listOf(
         UnitSerializer, BooleanSerializer, ByteSerializer, ShortSerializer, IntSerializer,
-        LongSerializer, FloatSerializer, DoubleSerializer, CharSerializer, StringSerializer
+        LongSerializer, FloatSerializer, DoubleSerializer, CharSerializer, StringSerializer,
+        ByteArraySerializer
 )
 
 internal object SerialCache {

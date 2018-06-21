@@ -19,7 +19,7 @@ package kotlinx.serialization.protobuf
 import kotlinx.serialization.Optional
 import kotlinx.serialization.SerialId
 import kotlinx.serialization.Serializable
-import kotlin.test.assertEquals
+import kotlinx.serialization.internal.ByteArraySerializer
 
 @Serializable
 data class TestInt(@SerialId(1) @ProtoType(ProtoNumberType.SIGNED) val a: Int)
@@ -45,7 +45,11 @@ data class TestIntWithList(
         @SerialId(10) val l: List<Int>
 )
 
-infix fun <T> T.shouldBe(expected: T) = assertEquals(expected, this)
+@Serializable
+// TODO remove @Serializable when ByteArray added to compiler
+data class TestByteArray(@SerialId(1) @Serializable(ByteArraySerializer::class) val a: ByteArray) {
+    override fun equals(other: Any?): Boolean = other is TestByteArray && a.contentEquals(other.a)
+}
 
 val t1 = TestInt(-150)
 val t1e = TestInt(0)
@@ -56,3 +60,4 @@ val t3e = TestString("")
 val t4 = TestInner(t1)
 val t5 = TestComplex(42, "testing")
 val t6 = TestNumbers(100500, Long.MAX_VALUE)
+val t7 = TestByteArray(byteArrayOf(0, Byte.MIN_VALUE, Byte.MAX_VALUE))

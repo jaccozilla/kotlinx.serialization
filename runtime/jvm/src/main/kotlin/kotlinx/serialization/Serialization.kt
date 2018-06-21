@@ -16,6 +16,7 @@
 
 package kotlinx.serialization
 
+import java.util.Base64
 import kotlin.reflect.KClass
 
 @Suppress("UNCHECKED_CAST")
@@ -24,6 +25,9 @@ actual fun <T: Any> KClass<T>.serializer(): KSerializer<T> = this.java.invokeSer
 
 actual fun String.toUtf8Bytes() = this.toByteArray(Charsets.UTF_8)
 actual fun stringFromUtf8Bytes(bytes: ByteArray) = String(bytes, Charsets.UTF_8)
+
+actual fun ByteArray.toBase64String(): String = Base64.getEncoder().encodeToString(this)
+actual fun byteArrayFromBase64String(string: String): ByteArray = Base64.getDecoder().decode(string)
 
 actual fun <E: Enum<E>> enumFromName(enumClass: KClass<E>, value: String): E = java.lang.Enum.valueOf(enumClass.java, value)
 actual fun <E: Enum<E>> enumFromOrdinal(enumClass: KClass<E>, ordinal: Int): E = enumClass.java.enumConstants[ordinal]

@@ -59,6 +59,7 @@ class ProtoBuf(val context: SerialContext? = null) {
         override fun writeTaggedBoolean(tag: ProtoDesc, value: Boolean) = encoder.writeInt(if (value) 1 else 0, tag.first, ProtoNumberType.DEFAULT)
         override fun writeTaggedChar(tag: ProtoDesc, value: Char) = encoder.writeInt(value.toInt(), tag.first, tag.second)
         override fun writeTaggedString(tag: ProtoDesc, value: String) = encoder.writeString(value, tag.first)
+        override fun writeTaggedByteArray(tag: ProtoDesc, value: ByteArray) = encoder.writeByteArray(value, tag.first)
         override fun <E : Enum<E>> writeTaggedEnum(tag: ProtoDesc, enumClass: KClass<E>, value: E) = encoder.writeInt(value.ordinal, tag.first, ProtoNumberType.DEFAULT)
 
         override fun KSerialClassDesc.getTag(index: Int) = this.getProtoDesc(index)
@@ -115,6 +116,10 @@ class ProtoBuf(val context: SerialContext? = null) {
         fun writeString(value: String, tag: Int) {
             val bytes = value.toUtf8Bytes()
             writeObject(bytes, tag)
+        }
+
+        fun writeByteArray(value: ByteArray, tag: Int) {
+            writeObject(value, tag)
         }
 
         fun writeDouble(value: Double, tag: Int) {
@@ -181,6 +186,7 @@ class ProtoBuf(val context: SerialContext? = null) {
         override fun readTaggedDouble(tag: ProtoDesc): Double = decoder.nextDouble()
         override fun readTaggedChar(tag: ProtoDesc): Char = decoder.nextInt(tag.second).toChar()
         override fun readTaggedString(tag: ProtoDesc): String = decoder.nextString()
+        override fun readTaggedByteArray(tag: ProtoDesc): ByteArray = decoder.nextByteArray()
         override fun <E : Enum<E>> readTaggedEnum(tag: ProtoDesc, enumClass: KClass<E>): E = enumFromOrdinal(enumClass, decoder.nextInt(ProtoNumberType.DEFAULT))
 
         override fun KSerialClassDesc.getTag(index: Int) = this.getProtoDesc(index)
@@ -283,6 +289,10 @@ class ProtoBuf(val context: SerialContext? = null) {
         fun nextString(): String {
             val bytes = this.nextObject()
             return stringFromUtf8Bytes(bytes)
+        }
+
+        fun nextByteArray(): ByteArray {
+            return this.nextObject()
         }
 
         private fun decode32(format: ProtoNumberType = ProtoNumberType.DEFAULT, eofAllowed: Boolean = false): Int = when (format) {

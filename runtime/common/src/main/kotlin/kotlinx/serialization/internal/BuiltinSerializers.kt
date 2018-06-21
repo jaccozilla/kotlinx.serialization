@@ -98,6 +98,12 @@ object StringSerializer : KSerializer<String> {
     override fun load(input: KInput): String = input.readStringValue()
 }
 
+object ByteArraySerializer : KSerializer<ByteArray> {
+    override val serialClassDesc: KSerialClassDesc = PrimitiveDesc("kotlin.ByteArray")
+
+    override fun save(output: KOutput, obj: ByteArray) = output.writeByteArrayValue(obj)
+    override fun load(input: KInput): ByteArray = input.readByteArrayValue()
+}
 
 internal class EnumDesc(override val name: String) : KSerialClassDesc {
 

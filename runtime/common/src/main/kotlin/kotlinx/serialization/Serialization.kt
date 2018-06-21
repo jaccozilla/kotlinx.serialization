@@ -138,6 +138,7 @@ abstract class KOutput internal constructor() {
     abstract fun writeDoubleValue(value: Double)
     abstract fun writeCharValue(value: Char)
     abstract fun writeStringValue(value: String)
+    abstract fun writeByteArrayValue(value: ByteArray)
     abstract fun <T : Enum<T>> writeEnumValue(enumClass: KClass<T>, value: T)
 
     inline fun <reified T : Enum<T>> writeEnumValue(value: T) = writeEnumValue(T::class, value)
@@ -180,6 +181,7 @@ abstract class KOutput internal constructor() {
     abstract fun writeDoubleElementValue(desc: KSerialClassDesc, index: Int, value: Double)
     abstract fun writeCharElementValue(desc: KSerialClassDesc, index: Int, value: Char)
     abstract fun writeStringElementValue(desc: KSerialClassDesc, index: Int, value: String)
+    abstract fun writeByteArrayElementValue(desc: KSerialClassDesc, index: Int, value: ByteArray)
     abstract fun <T : Enum<T>> writeEnumElementValue(desc: KSerialClassDesc, index: Int, enumClass: KClass<T>, value: T)
 
     inline fun <reified T : Enum<T>> writeEnumElementValue(desc: KSerialClassDesc, index: Int, value: T) {
@@ -236,6 +238,7 @@ abstract class KInput internal constructor() {
     abstract fun readDoubleValue(): Double
     abstract fun readCharValue(): Char
     abstract fun readStringValue(): String
+    abstract fun readByteArrayValue() : ByteArray
     abstract fun <T : Enum<T>> readEnumValue(enumClass: KClass<T> ): T
 
     inline fun <reified T : Enum<T>> readEnumValue(): T = readEnumValue(T::class)
@@ -364,6 +367,7 @@ open class ElementValueOutput : KOutput() {
     override fun writeDoubleValue(value: Double) = writeValue(value)
     override fun writeCharValue(value: Char) = writeValue(value)
     override fun writeStringValue(value: String) = writeValue(value)
+    override fun writeByteArrayValue(value: ByteArray) = writeValue(value)
     override fun <T : Enum<T>> writeEnumValue(enumClass: KClass<T>, value: T) = writeValue(value)
 
     // -------------------------------------------------------------------------------------
@@ -380,6 +384,7 @@ open class ElementValueOutput : KOutput() {
     override final fun writeDoubleElementValue(desc: KSerialClassDesc, index: Int, value: Double) { if (writeElement(desc, index)) writeDoubleValue(value) }
     override final fun writeCharElementValue(desc: KSerialClassDesc, index: Int, value: Char) { if (writeElement(desc, index)) writeCharValue(value) }
     override final fun writeStringElementValue(desc: KSerialClassDesc, index: Int, value: String) { if (writeElement(desc, index)) writeStringValue(value) }
+    override final fun writeByteArrayElementValue(desc: KSerialClassDesc, index: Int, value: ByteArray) { if (writeElement(desc, index)) writeByteArrayValue(value) }
     override final fun <T : Enum<T>> writeEnumElementValue(desc: KSerialClassDesc, index: Int, enumClass: KClass<T>, value: T) { if (writeElement(desc, index)) writeEnumValue(enumClass, value) }
 
 
@@ -413,6 +418,7 @@ open class ElementValueInput : KInput() {
     override fun readDoubleValue(): Double = readValue() as Double
     override fun readCharValue(): Char = readValue() as Char
     override fun readStringValue(): String = readValue() as String
+    override fun readByteArrayValue(): ByteArray = readValue() as ByteArray
 
     @Suppress("UNCHECKED_CAST")
     override fun <T : Enum<T>> readEnumValue(enumClass: KClass<T> ): T =
@@ -466,6 +472,7 @@ open class ValueTransformer {
     open fun transformDoubleValue(desc: KSerialClassDesc, index: Int, value: Double) = value
     open fun transformCharValue(desc: KSerialClassDesc, index: Int, value: Char) = value
     open fun transformStringValue(desc: KSerialClassDesc, index: Int, value: String) = value
+    open fun transformByteArrayValue(desc: KSerialClassDesc, index: Int, value: ByteArray) = value
 
     open fun <T : Enum<T>> transformEnumValue(desc: KSerialClassDesc, index: Int, enumClass: KClass<T>, value: T): T = value
 
@@ -494,6 +501,7 @@ open class ValueTransformer {
         override fun writeDoubleValue(value: Double) { writeNullableValue(value) }
         override fun writeCharValue(value: Char) { writeNullableValue(value) }
         override fun writeStringValue(value: String) { writeNullableValue(value) }
+        override fun writeByteArrayValue(value: ByteArray) { writeNullableValue(value) }
         override fun <T : Enum<T>> writeEnumValue(enumClass: KClass<T>, value: T) { writeNullableValue(value) }
 
         override fun <T : Any?> writeSerializableValue(saver: KSerialSaver<T>, value: T) {
@@ -517,6 +525,7 @@ open class ValueTransformer {
         override fun writeDoubleElementValue(desc: KSerialClassDesc, index: Int, value: Double) = writeNullableValue(value)
         override fun writeCharElementValue(desc: KSerialClassDesc, index: Int, value: Char) = writeNullableValue(value)
         override fun writeStringElementValue(desc: KSerialClassDesc, index: Int, value: String) = writeNullableValue(value)
+        override fun writeByteArrayElementValue(desc: KSerialClassDesc, index: Int, value: ByteArray) = writeNullableValue(value)
 
         override fun <T : Enum<T>> writeEnumElementValue(desc: KSerialClassDesc, index: Int, enumClass: KClass<T>, value: T) =
                 writeNullableValue(value)
@@ -547,6 +556,8 @@ open class ValueTransformer {
         override fun readDoubleValue(): Double = transformDoubleValue(curDesc!!, curIndex, readValue() as Double)
         override fun readCharValue(): Char = transformCharValue(curDesc!!, curIndex, readValue() as Char)
         override fun readStringValue(): String = transformStringValue(curDesc!!, curIndex, readValue() as String)
+        override fun readByteArrayValue(): ByteArray = transformByteArrayValue(curDesc!!, curIndex, readValue() as ByteArray)
+
 
         @Suppress("UNCHECKED_CAST")
         override fun <T : Enum<T>> readEnumValue(enumClass: KClass<T> ): T =

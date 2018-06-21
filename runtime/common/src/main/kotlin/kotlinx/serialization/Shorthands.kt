@@ -33,3 +33,5 @@ fun Short.Companion.serializer(): KSerializer<Short> = ShortSerializer
 fun Int.Companion.serializer(): KSerializer<Int> = IntSerializer
 fun Long.Companion.serializer(): KSerializer<Long> = LongSerializer
 fun Double.Companion.serializer(): KSerializer<Double> = DoubleSerializer
+// TODO add empty Companion object to ByteArray to support this extension function
+//fun ByteArray.Companion.serializer(): KSerializer<ByteArray> = ByteArraySerializer

@@ -45,6 +45,7 @@ class ConfigParser(val context: SerialContext? = null) {
         private fun getTaggedNumber(tag: T) = validateAndCast<Number>(tag, ConfigValueType.NUMBER)
 
         override fun readTaggedString(tag: T) = validateAndCast<String>(tag, ConfigValueType.STRING)
+        override fun readTaggedByteArray(tag: T) = TODO()
 
         override fun readTaggedByte(tag: T): Byte = getTaggedNumber(tag).toByte()
         override fun readTaggedShort(tag: T): Short = getTaggedNumber(tag).toShort()

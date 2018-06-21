@@ -78,6 +78,7 @@ class CBOR(val context: SerialContext? = null, val updateMode: UpdateMode = Upda
         }
 
         override fun writeStringValue(value: String) = encoder.encodeString(value)
+        override fun writeByteArrayValue(value: ByteArray) = encoder.encodeByteArray(value)
 
         override fun writeFloatValue(value: Float) = encoder.encodeFloat(value)
         override fun writeDoubleValue(value: Double) = encoder.encodeDouble(value)
@@ -115,6 +116,13 @@ class CBOR(val context: SerialContext? = null, val updateMode: UpdateMode = Upda
             header[0] = header[0] or HEADER_STRING
             output.write(header)
             output.write(data)
+        }
+
+        fun encodeByteArray(value: ByteArray) {
+            val header = composeNumber(value.size.toLong())
+            header[0] = header[0] or HEADER_ARRAY.toByte()
+            output.write(header)
+            output.write(value)
         }
 
         fun encodeFloat(value: Float) {
@@ -226,6 +234,7 @@ class CBOR(val context: SerialContext? = null, val updateMode: UpdateMode = Upda
         }
 
         override fun readStringValue() = decoder.nextString()
+        override fun readByteArrayValue() = decoder.nextByteArray()
 
         override fun readNotNullMark(): Boolean = !decoder.isNull()
 
@@ -287,7 +296,7 @@ class CBOR(val context: SerialContext? = null, val updateMode: UpdateMode = Upda
                 skipByte(BEGIN_ARRAY)
                 return -1
             }
-            if ((curByte and 0b111_00000) != HEADER_ARRAY)
+            if ((curByte and HEADER_MASK) != HEADER_ARRAY)
                 throw CBORParsingException("Expected start of array, but found ${HexConverter.toHexString(curByte)}")
             val arrayLen = readNumber().toInt()
             readByte()
@@ -301,12 +310,20 @@ class CBOR(val context: SerialContext? = null, val updateMode: UpdateMode = Upda
         fun end() = skipByte(BREAK)
 
         fun nextString(): String {
-            if ((curByte and 0b111_00000) != HEADER_STRING.toInt()) throw CBORParsingException("Expected start of string, but found ${HexConverter.toHexString(curByte)}")
+            if ((curByte and HEADER_MASK) != HEADER_STRING.toInt()) throw CBORParsingException("Expected start of string, but found ${HexConverter.toHexString(curByte)}")
             val strLen = readNumber().toInt()
             val arr = input.readExactNBytes(strLen)
             val ans = stringFromUtf8Bytes(arr)
             readByte()
             return ans
+        }
+
+        fun nextByteArray(): ByteArray {
+            if ((curByte and HEADER_MASK) != HEADER_ARRAY) throw CBORParsingException("Expected start of array, but found ${HexConverter.toHexString(curByte)}")
+            val arrayLen = readNumber().toInt()
+            val arr = input.readExactNBytes(arrayLen)
+            readByte()
+            return arr
         }
 
         fun nextNumber(): Long {
@@ -316,8 +333,8 @@ class CBOR(val context: SerialContext? = null, val updateMode: UpdateMode = Upda
         }
 
         private fun readNumber(): Long {
-            val value = curByte and 0b000_11111
-            val negative = (curByte and 0b111_00000) == HEADER_NEGATIVE.toInt()
+            val value = curByte and HEADER_MASK.inv()
+            val negative = (curByte and HEADER_MASK) == HEADER_NEGATIVE.toInt()
             val bytesToRead = when (value) {
                 24 -> 1
                 25 -> 2
@@ -370,6 +387,7 @@ class CBOR(val context: SerialContext? = null, val updateMode: UpdateMode = Upda
         private const val BEGIN_MAP = 0xbf
         private const val BREAK = 0xff
 
+        private const val HEADER_MASK: Int = 0b111_00000
         private const val HEADER_STRING: Byte = 0b011_00000
         private const val HEADER_NEGATIVE: Byte = 0b001_00000
         private const val HEADER_ARRAY: Int = 0b100_00000

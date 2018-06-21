@@ -16,6 +16,7 @@
 
 package kotlinx.serialization.protobuf
 
+import kotlinx.serialization.shouldBe
 import kotlin.test.Test
 
 class ProtobufWriterTest {
@@ -55,5 +56,10 @@ class ProtobufWriterTest {
     @Test
     fun writeNumbers() {
         ProtoBuf.dumps(t6).toLowerCase() shouldBe "0d9488010010ffffffffffffffff7f"
+    }
+
+    @Test
+    fun writeBytes() {
+        ProtoBuf.dumps(t7).toLowerCase() shouldBe "0a0300807f"
     }
 }

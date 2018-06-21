@@ -19,12 +19,16 @@ package kotlinx.serialization.features
 import kotlinx.serialization.KInput
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Serializer
+import kotlinx.serialization.byteArrayFromBase64String
 import kotlinx.serialization.json.JSON
 import kotlinx.serialization.serializerByTypeToken
+import kotlinx.serialization.shouldBe
 import org.junit.Test
 import java.lang.reflect.ParameterizedType
 import java.lang.reflect.Type
+import java.util.Arrays
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class ResolvingTest {
     @Serializable
@@ -62,6 +66,15 @@ class ResolvingTest {
         val serial = serializerByTypeToken(token)
         val s = JSON.unquoted.stringify(serial, myArr)
         assertEquals("[a,b,c]", s)
+    }
+
+    @Test
+    fun testByteArrayResolving() {
+        val myArr = byteArrayOf(1, 2, 3)
+        val token = myArr::class.java
+        val serial = serializerByTypeToken(token)
+        val s = JSON.unquoted.stringify(serial, myArr)
+        byteArrayFromBase64String(s).toList() shouldBe myArr.toList()
     }
 
     @Test

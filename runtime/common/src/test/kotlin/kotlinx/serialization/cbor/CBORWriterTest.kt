@@ -17,12 +17,11 @@
 
 package kotlinx.serialization.cbor
 
+import kotlinx.serialization.shouldBe
 import kotlin.test.Test
-import kotlin.test.assertEquals
 
 
 class CBORWriterTest {
-    infix fun <T> T.shouldBe(expected: T) = assertEquals(expected, this)
 
     @Test
     fun writeSimpleClass() {
@@ -54,5 +53,11 @@ class CBORWriterTest {
                 'a'
         )
         CBOR.dumps(test) shouldBe "bf63696e741a00018894646c6f6e671b7fffffffffffffff65666c6f6174fa4228000066646f75626c65fb4271fb0c5a2b700067626f6f6c65616ef564636861721861ff"
+    }
+
+    @Test
+    fun writeArrays() {
+        val test = ArrayZoo(byteArrayOf(Byte.MIN_VALUE, 0, Byte.MAX_VALUE), arrayOf(Byte.MIN_VALUE, 1, Byte.MAX_VALUE))
+        CBOR.dumps(test) shouldBe "bf696279746541727261798380007f696172726179427974659f387f01187fffff"
     }
 }

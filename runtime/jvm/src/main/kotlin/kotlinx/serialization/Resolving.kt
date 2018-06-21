@@ -43,8 +43,11 @@ private fun mapJavaClassNameToKotlin(s: String): String = when(s) {
     "java.util.Map", "java.util.LinkedHashMap" -> LinkedHashMapClassDesc.name
     "java.util.HashMap" -> HashMapClassDesc.name
     "java.util.Map\$Entry" -> MapEntryClassDesc.name
+    "byte[]" -> ByteArraySerializer.serialClassDesc.name
     else -> s
 }
+
+private val primitiveArraySerializers = setOf(ByteArray::class.java)
 
 fun <E> serializerByValue(value: E, context: SerialContext? = null): KSerializer<E> {
     val klass = (value as? Any)?.javaClass?.kotlin ?: throw SerializationException("Cannot determine class for value $value")
@@ -58,7 +61,7 @@ fun <E> serializerByClass(klass: KClass<*>, context: SerialContext? = null): KSe
 // This method intended for static, format-agnostic resolving (e.g. in adapter factories) so context is not used here.
 @Suppress("UNCHECKED_CAST")
 fun serializerByTypeToken(type: Type): KSerializer<Any> = when(type) {
-    is Class<*> -> if (!type.isArray) {
+    is Class<*> -> if (!type.isArray || primitiveArraySerializers.contains(type)) {
         serializerByClass(type.kotlin)
     } else {
         val eType: Class<*> = type.componentType

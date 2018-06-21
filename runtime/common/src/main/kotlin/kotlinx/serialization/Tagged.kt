@@ -56,6 +56,7 @@ abstract class TaggedOutput<T : Any?> : KOutput() {
     open fun writeTaggedBoolean(tag: T, value: Boolean) = writeTaggedValue(tag, value)
     open fun writeTaggedChar(tag: T, value: Char) = writeTaggedValue(tag, value)
     open fun writeTaggedString(tag: T, value: String) = writeTaggedValue(tag, value)
+    open fun writeTaggedByteArray(tag: T, value: ByteArray) = writeTaggedValue(tag, value)
     open fun <E : Enum<E>> writeTaggedEnum(tag: T, enumClass: KClass<E>, value: E) = writeTaggedValue(tag, value)
 
     // ---- Implementation of low-level API ----
@@ -128,6 +129,10 @@ abstract class TaggedOutput<T : Any?> : KOutput() {
         writeTaggedString(popTag(), value)
     }
 
+    override final fun writeByteArrayValue(value: ByteArray) {
+        writeTaggedByteArray(popTag(), value)
+    }
+
     override final fun <E : Enum<E>> writeEnumValue(enumClass: KClass<E>, value: E) {
         writeTaggedEnum(popTag(), enumClass, value)
     }
@@ -153,6 +158,7 @@ abstract class TaggedOutput<T : Any?> : KOutput() {
     override final fun writeDoubleElementValue(desc: KSerialClassDesc, index: Int, value: Double) = writeTaggedDouble(desc.getTag(index), value)
     override final fun writeCharElementValue(desc: KSerialClassDesc, index: Int, value: Char) = writeTaggedChar(desc.getTag(index), value)
     override final fun writeStringElementValue(desc: KSerialClassDesc, index: Int, value: String) = writeTaggedString(desc.getTag(index), value)
+    override final fun writeByteArrayElementValue(desc: KSerialClassDesc, index: Int, value: ByteArray) = writeTaggedByteArray(desc.getTag(index), value)
 
     override final fun <E : Enum<E>> writeEnumElementValue(desc: KSerialClassDesc, index: Int, enumClass: KClass<E>, value: E) {
         writeTaggedEnum(desc.getTag(index), enumClass, value)
@@ -218,6 +224,7 @@ abstract class TaggedInput<T : Any?> : KInput() {
     open fun readTaggedDouble(tag: T): Double = readTaggedValue(tag) as Double
     open fun readTaggedChar(tag: T): Char = readTaggedValue(tag) as Char
     open fun readTaggedString(tag: T): String = readTaggedValue(tag) as String
+    open fun readTaggedByteArray(tag: T): ByteArray = readTaggedValue(tag) as ByteArray
     @Suppress("UNCHECKED_CAST")
     open fun <E : Enum<E>> readTaggedEnum(tag: T, enumClass: KClass<E>): E = readTaggedValue(tag) as E
 
@@ -238,6 +245,7 @@ abstract class TaggedInput<T : Any?> : KInput() {
     override final fun readDoubleValue(): Double = readTaggedDouble(popTag())
     override final fun readCharValue(): Char = readTaggedChar(popTag())
     override final fun readStringValue(): String = readTaggedString(popTag())
+    override final fun readByteArrayValue(): ByteArray = readTaggedByteArray(popTag())
     override final fun <T : Enum<T>> readEnumValue(enumClass: KClass<T>): T = readTaggedEnum(popTag(), enumClass)
 
     // Override for custom behaviour

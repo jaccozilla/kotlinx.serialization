@@ -20,6 +20,7 @@ import kotlinx.io.PrintWriter
 import kotlinx.io.Reader
 import kotlinx.io.StringReader
 import kotlinx.io.StringWriter
+import kotlinx.serialization.internal.ByteArraySerializer
 import kotlin.reflect.KClass
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -92,6 +93,8 @@ class SerializeZooTest {
 
     @Serializable data class ZooWithArrays(
             val arrByte: Array<Byte>,
+            @Serializable(with = ByteArraySerializer::class)
+            val byteArray: ByteArray,
             val arrInt: Array<Int>,
             val arrIntN: Array<Int?>,
             val arrIntData: Array<IntData>
@@ -99,6 +102,7 @@ class SerializeZooTest {
     ) {
         override fun equals(other: Any?) = other is ZooWithArrays &&
                 arrByte.contentEquals(other.arrByte) &&
+                byteArray.contentEquals(other.byteArray) &&
                 arrInt.contentEquals(other.arrInt) &&
                 arrIntN.contentEquals(other.arrIntN) &&
                 arrIntData.contentEquals(other.arrIntData)
@@ -119,6 +123,7 @@ class SerializeZooTest {
             mapOf(0 to null, 1 to "first", 2 to "second"),
             ZooWithArrays(
                     arrayOf(1, 2, 3),
+                    byteArrayOf(4, 5, 6),
                     arrayOf(100, 200, 300),
                     arrayOf(null, -1, -2),
                     arrayOf(IntData(1), IntData(2))
@@ -137,7 +142,7 @@ class SerializeZooTest {
 
         override fun writeElement(desc: KSerialClassDesc, index: Int): Boolean {
             if (index > 0) out.print(", ")
-            out.print(desc.getElementName(index));
+            out.print(desc.getElementName(index))
             out.print(':')
             return true
         }
@@ -149,6 +154,12 @@ class SerializeZooTest {
             out.print('"')
             out.print(value)
             out.print('"')
+        }
+
+        override fun writeByteArrayValue(value: ByteArray) {
+            out.print('[')
+            out.print(value.toBase64String())
+            out.print(']')
         }
 
         override fun writeCharValue(value: Char) = writeStringValue(value.toString())
@@ -204,6 +215,13 @@ class SerializeZooTest {
             inp.expectAfterWhiteSpace('"')
             val value = inp.nextUntil('"')
             inp.expect('"')
+            return value
+        }
+
+        override fun readByteArrayValue(): ByteArray {
+            inp.expectAfterWhiteSpace('[')
+            val value = byteArrayFromBase64String(inp.nextUntil(']'))
+            inp.expect(']')
             return value
         }
 

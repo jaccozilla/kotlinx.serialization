@@ -155,6 +155,10 @@ data class JSON(
             }
         }
 
+        override fun writeByteArrayValue(value: ByteArray) {
+            writeStringValue(value.toBase64String())
+        }
+
         override fun writeNonSerializableValue(value: Any) {
             writeStringValue(value.toString())
         }
@@ -308,6 +312,7 @@ data class JSON(
         override fun readDoubleValue(): Double = p.takeStr().toDouble()
         override fun readCharValue(): Char = p.takeStr().single()
         override fun readStringValue(): String = p.takeStr()
+        override fun readByteArrayValue(): ByteArray = byteArrayFromBase64String(p.takeStr())
 
         override fun <T : Enum<T>> readEnumValue(enumClass: KClass<T>): T = enumFromName(enumClass, p.takeStr())
     }

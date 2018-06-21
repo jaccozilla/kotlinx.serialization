@@ -17,6 +17,7 @@
 package kotlinx.serialization.cbor
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.internal.ByteArraySerializer
 
 @Serializable
 data class Simple(val a: String)
@@ -41,3 +42,13 @@ data class NumberZoo(
         val boolean: Boolean,
         val char: Char
 )
+
+@Serializable
+data class ArrayZoo(
+        @Serializable(ByteArraySerializer::class)
+        val byteArray: ByteArray,
+        val arrayByte: Array<Byte>) {
+
+    override fun equals(other: Any?): Boolean = other is ArrayZoo && byteArray.contentEquals(other.byteArray)
+            && arrayByte.contentEquals(other.arrayByte)
+}

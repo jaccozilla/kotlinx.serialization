@@ -16,6 +16,7 @@
 
 package kotlinx.serialization
 
+import org.w3c.dom.WindowOrWorkerGlobalScope
 import kotlin.reflect.KClass
 
 @Suppress("UNCHECKED_CAST")
@@ -34,6 +35,14 @@ actual fun stringFromUtf8Bytes(bytes: ByteArray): String {
     val s = bytes.map { (it.toInt() and 0xFF).toChar() }.joinToString(separator = "") // wide uint8 to char
     val ans = js("decodeURIComponent(escape(s))")
     return ans as String
+}
+
+actual fun ByteArray.toBase64String(): String {
+    TODO()
+}
+
+actual fun byteArrayFromBase64String(string: String): ByteArray {
+    TODO()
 }
 
 actual fun <E: Enum<E>> enumFromName(enumClass: KClass<E>, value: String): E = enumClass.js.asDynamic().`valueOf_61zpoe$`(value) as E
