@@ -20,6 +20,7 @@ import kotlinx.serialization.Optional
 import kotlinx.serialization.SerialId
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.internal.ByteArraySerializer
+import kotlinx.serialization.internal.IntArraySerializer
 
 @Serializable
 data class TestInt(@SerialId(1) @ProtoType(ProtoNumberType.SIGNED) val a: Int)
@@ -51,6 +52,13 @@ data class TestByteArray(@SerialId(1) @Serializable(ByteArraySerializer::class) 
     override fun equals(other: Any?): Boolean = other is TestByteArray && a.contentEquals(other.a)
 }
 
+@Serializable
+// TODO remove @Serializable when IntArray added to compiler
+data class TestIntArray(@SerialId(1) @Serializable(IntArraySerializer::class) val a: IntArray,
+                        @SerialId(2) @Serializable(IntArraySerializer::class) @ProtoType(ProtoNumberType.FIXED) val packed: IntArray) {
+    override fun equals(other: Any?): Boolean = other is TestIntArray && a.contentEquals(other.a) && packed.contentEquals(other.packed)
+}
+
 val t1 = TestInt(-150)
 val t1e = TestInt(0)
 val t2 = TestList(listOf(150, 228, 1337))
@@ -61,3 +69,4 @@ val t4 = TestInner(t1)
 val t5 = TestComplex(42, "testing")
 val t6 = TestNumbers(100500, Long.MAX_VALUE)
 val t7 = TestByteArray(byteArrayOf(0, Byte.MIN_VALUE, Byte.MAX_VALUE))
+val t8 = TestIntArray(intArrayOf(0, Int.MIN_VALUE, Int.MAX_VALUE), intArrayOf(0, Int.MIN_VALUE, Int.MAX_VALUE))

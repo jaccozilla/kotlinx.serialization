@@ -17,6 +17,7 @@
 package org.jetbrains.kotlinx.serialization.config
 
 import com.typesafe.config.*
+import kotlinx.io.PrimitiveArrayView
 import kotlinx.serialization.*
 import kotlinx.serialization.internal.KEY_INDEX
 import kotlin.reflect.KClass
@@ -45,7 +46,6 @@ class ConfigParser(val context: SerialContext? = null) {
         private fun getTaggedNumber(tag: T) = validateAndCast<Number>(tag, ConfigValueType.NUMBER)
 
         override fun readTaggedString(tag: T) = validateAndCast<String>(tag, ConfigValueType.STRING)
-        override fun readTaggedByteArray(tag: T) = TODO()
 
         override fun readTaggedByte(tag: T): Byte = getTaggedNumber(tag).toByte()
         override fun readTaggedShort(tag: T): Short = getTaggedNumber(tag).toShort()
@@ -65,6 +65,8 @@ class ConfigParser(val context: SerialContext? = null) {
         override fun readTaggedValue(tag: T): Any = getTaggedConfigValue(tag).unwrapped()
 
         override fun readTaggedNotNullMark(tag: T) = getTaggedConfigValue(tag).valueType() != ConfigValueType.NULL
+
+        override fun <N : Number> readTaggedPrimitiveArray(tag: T, numberClass: KClass<N>): PrimitiveArrayView<N> = TODO()
 
         override fun <E : Enum<E>> readTaggedEnum(tag: T, enumClass: KClass<E>): E {
             val s = validateAndCast<String>(tag, ConfigValueType.STRING)

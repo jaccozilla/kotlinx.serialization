@@ -16,7 +16,10 @@
 
 package kotlinx.serialization.json
 
+import kotlinx.io.PrimitiveArrayView
 import kotlinx.serialization.*
+import kotlinx.serialization.internal.ByteSerializer
+import kotlinx.serialization.internal.IntSerializer
 import kotlinx.serialization.internal.createString
 import kotlin.reflect.KClass
 
@@ -155,8 +158,11 @@ data class JSON(
             }
         }
 
-        override fun writeByteArrayValue(value: ByteArray) {
-            writeStringValue(value.toBase64String())
+        override fun writePrimitiveArrayValue(value: PrimitiveArrayView<*>) {
+            when(value) {
+                is PrimitiveArrayView.ByteArrayView -> writeSerializableValue(ByteSerializer.list, value.array.asList())
+                is PrimitiveArrayView.IntArrayView -> writeSerializableValue(IntSerializer.list, value.array.asList())
+            }
         }
 
         override fun writeNonSerializableValue(value: Any) {
@@ -312,7 +318,9 @@ data class JSON(
         override fun readDoubleValue(): Double = p.takeStr().toDouble()
         override fun readCharValue(): Char = p.takeStr().single()
         override fun readStringValue(): String = p.takeStr()
-        override fun readByteArrayValue(): ByteArray = byteArrayFromBase64String(p.takeStr())
+        override fun <T : Number> readPrimitiveArrayValue(numberClass: KClass<T>): PrimitiveArrayView<T> {
+            TODO()
+        }
 
         override fun <T : Enum<T>> readEnumValue(enumClass: KClass<T>): T = enumFromName(enumClass, p.takeStr())
     }

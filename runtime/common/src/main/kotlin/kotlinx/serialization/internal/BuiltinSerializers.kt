@@ -16,7 +16,13 @@
 
 package kotlinx.serialization.internal
 
-import kotlinx.serialization.*
+import kotlinx.io.PrimitiveArrayView
+import kotlinx.serialization.KInput
+import kotlinx.serialization.KOutput
+import kotlinx.serialization.KSerialClassDesc
+import kotlinx.serialization.KSerialClassKind
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.enumClassName
 import kotlin.reflect.KClass
 
 class PrimitiveDesc(override val name: String) : KSerialClassDesc {
@@ -101,8 +107,15 @@ object StringSerializer : KSerializer<String> {
 object ByteArraySerializer : KSerializer<ByteArray> {
     override val serialClassDesc: KSerialClassDesc = PrimitiveDesc("kotlin.ByteArray")
 
-    override fun save(output: KOutput, obj: ByteArray) = output.writeByteArrayValue(obj)
-    override fun load(input: KInput): ByteArray = input.readByteArrayValue()
+    override fun save(output: KOutput, obj: ByteArray) = output.writePrimitiveArrayValue(PrimitiveArrayView.adapt(obj))
+    override fun load(input: KInput): ByteArray = (input.readPrimitiveArrayValue(Byte::class) as PrimitiveArrayView.ByteArrayView).array
+}
+
+object IntArraySerializer : KSerializer<IntArray> {
+    override val serialClassDesc: KSerialClassDesc = PrimitiveDesc("kotlin.IntArray")
+
+    override fun save(output: KOutput, obj: IntArray) = output.writePrimitiveArrayValue(PrimitiveArrayView.adapt(obj))
+    override fun load(input: KInput): IntArray = (input.readPrimitiveArrayValue(Int::class) as PrimitiveArrayView.IntArrayView).array
 }
 
 internal class EnumDesc(override val name: String) : KSerialClassDesc {

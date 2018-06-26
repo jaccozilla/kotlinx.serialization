@@ -18,8 +18,6 @@ package kotlinx.serialization.protobuf
 
 import kotlinx.serialization.CustomSerializersTest.*
 import kotlinx.serialization.*
-import kotlinx.serialization.internal.IntSerializer
-import kotlinx.serialization.internal.SerialClassDescImpl
 import kotlin.test.Test
 import kotlin.test.assertEquals
 

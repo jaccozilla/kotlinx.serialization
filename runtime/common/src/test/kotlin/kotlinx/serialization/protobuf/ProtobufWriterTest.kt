@@ -62,4 +62,9 @@ class ProtobufWriterTest {
     fun writeBytes() {
         ProtoBuf.dumps(t7).toLowerCase() shouldBe "0a0300807f"
     }
+
+    @Test
+    fun writeInts() {
+        ProtoBuf.dumps(t8).toLowerCase() shouldBe "0a030080808080f8ffffffff01ffffffff0712030000000000000080ffffff7f"
+    }
 }

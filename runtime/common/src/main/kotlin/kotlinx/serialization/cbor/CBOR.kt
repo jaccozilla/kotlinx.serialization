@@ -78,7 +78,7 @@ class CBOR(val context: SerialContext? = null, val updateMode: UpdateMode = Upda
         }
 
         override fun writeStringValue(value: String) = encoder.encodeString(value)
-        override fun writeByteArrayValue(value: ByteArray) = encoder.encodeByteArray(value)
+        override fun writePrimitiveArrayValue(value: PrimitiveArrayView<*>) = encoder.encodePrimitiveArray(value)
 
         override fun writeFloatValue(value: Float) = encoder.encodeFloat(value)
         override fun writeDoubleValue(value: Double) = encoder.encodeDouble(value)
@@ -118,11 +118,14 @@ class CBOR(val context: SerialContext? = null, val updateMode: UpdateMode = Upda
             output.write(data)
         }
 
-        fun encodeByteArray(value: ByteArray) {
+        fun encodePrimitiveArray(value: PrimitiveArrayView<*>) {
             val header = composeNumber(value.size.toLong())
             header[0] = header[0] or HEADER_ARRAY.toByte()
             output.write(header)
-            output.write(value)
+            when (value) {
+                is PrimitiveArrayView.ByteArrayView -> output.write(value.array)
+                else -> TODO()
+            }
         }
 
         fun encodeFloat(value: Float) {
@@ -234,7 +237,8 @@ class CBOR(val context: SerialContext? = null, val updateMode: UpdateMode = Upda
         }
 
         override fun readStringValue() = decoder.nextString()
-        override fun readByteArrayValue() = decoder.nextByteArray()
+        override fun <T : Number> readPrimitiveArrayValue(
+                numberClass: KClass<T>): PrimitiveArrayView<T> = decoder.nextPrimitiveArray(numberClass)
 
         override fun readNotNullMark(): Boolean = !decoder.isNull()
 
@@ -318,12 +322,18 @@ class CBOR(val context: SerialContext? = null, val updateMode: UpdateMode = Upda
             return ans
         }
 
-        fun nextByteArray(): ByteArray {
+        fun <T : Number> nextPrimitiveArray(numberClass: KClass<T>): PrimitiveArrayView<T> {
             if ((curByte and HEADER_MASK) != HEADER_ARRAY) throw CBORParsingException("Expected start of array, but found ${HexConverter.toHexString(curByte)}")
             val arrayLen = readNumber().toInt()
-            val arr = input.readExactNBytes(arrayLen)
+
+            val ans: PrimitiveArrayView<*> = when(numberClass) {
+                Byte::class -> PrimitiveArrayView.adapt(input.readExactNBytes(arrayLen))
+                else -> TODO()
+            }
             readByte()
-            return arr
+
+            @Suppress("UNCHECKED_CAST")
+            return ans as PrimitiveArrayView<T>
         }
 
         fun nextNumber(): Long {

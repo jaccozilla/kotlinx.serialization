@@ -37,14 +37,6 @@ actual fun stringFromUtf8Bytes(bytes: ByteArray): String {
     return ans as String
 }
 
-actual fun ByteArray.toBase64String(): String {
-    TODO()
-}
-
-actual fun byteArrayFromBase64String(string: String): ByteArray {
-    TODO()
-}
-
 actual fun <E: Enum<E>> enumFromName(enumClass: KClass<E>, value: String): E = enumClass.js.asDynamic().`valueOf_61zpoe$`(value) as E
 actual fun <E: Enum<E>> enumFromOrdinal(enumClass: KClass<E>, ordinal: Int): E = (enumClass.js.asDynamic().values() as Array<E>)[ordinal]
 

@@ -20,14 +20,10 @@ import kotlinx.serialization.internal.HexConverter
 import kotlinx.serialization.internal.createString
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 
 class StringTest {
     val str = "i ♥ u"
     val hex = "6920E299A52075"
-
-    val bytes = str.toUtf8Bytes()
-    val base64 = "aSDimaUgdQ=="
 
     @Test
     fun toUtf8() {
@@ -39,18 +35,6 @@ class StringTest {
     fun fromUtf8() {
         val s = stringFromUtf8Bytes(HexConverter.parseHexBinary(hex))
         assertEquals(str, s)
-    }
-
-    @Test
-    fun toBase64() {
-        val s = bytes.toBase64String()
-        assertEquals(base64, s)
-    }
-
-    @Test
-    fun fromBase64() {
-        val bytes = byteArrayFromBase64String(base64)
-        assertTrue(bytes.contentEquals(bytes))
     }
 
     @Test

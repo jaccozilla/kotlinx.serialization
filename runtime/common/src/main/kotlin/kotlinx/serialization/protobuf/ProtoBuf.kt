@@ -59,7 +59,7 @@ class ProtoBuf(val context: SerialContext? = null) {
         override fun writeTaggedBoolean(tag: ProtoDesc, value: Boolean) = encoder.writeInt(if (value) 1 else 0, tag.first, ProtoNumberType.DEFAULT)
         override fun writeTaggedChar(tag: ProtoDesc, value: Char) = encoder.writeInt(value.toInt(), tag.first, tag.second)
         override fun writeTaggedString(tag: ProtoDesc, value: String) = encoder.writeString(value, tag.first)
-        override fun writeTaggedByteArray(tag: ProtoDesc, value: ByteArray) = encoder.writeByteArray(value, tag.first)
+        override fun writeTaggedPrimitiveArray(tag: ProtoDesc, value: PrimitiveArrayView<*>) = encoder.writePrimitiveArray(value, tag.first, tag.second)
         override fun <E : Enum<E>> writeTaggedEnum(tag: ProtoDesc, enumClass: KClass<E>, value: E) = encoder.writeInt(value.ordinal, tag.first, ProtoNumberType.DEFAULT)
 
         override fun KSerialClassDesc.getTag(index: Int) = this.getProtoDesc(index)
@@ -95,6 +95,23 @@ class ProtoBuf(val context: SerialContext? = null) {
             out.write(header)
             out.write(len)
             out.write(bytes)
+        }
+
+        fun writePrimitiveArray(array: PrimitiveArrayView<*>, tag: Int, format: ProtoNumberType) {
+            val header = encode32((tag shl 3) or SIZE_DELIMITED)
+            val len = encode32(array.size)
+            out.write(header)
+            out.write(len)
+            when (array) {
+                is PrimitiveArrayView.ByteArrayView -> out.write(array.array)
+                is PrimitiveArrayView.IntArrayView -> {
+                    for (value in array) {
+                        // TODO would be nice if this didn't make the temp ByteArray
+                        out.write(encode32(value, format))
+                    }
+                }
+                else -> TODO()
+            }
         }
 
         fun writeInt(value: Int, tag: Int, format: ProtoNumberType) {
@@ -186,7 +203,7 @@ class ProtoBuf(val context: SerialContext? = null) {
         override fun readTaggedDouble(tag: ProtoDesc): Double = decoder.nextDouble()
         override fun readTaggedChar(tag: ProtoDesc): Char = decoder.nextInt(tag.second).toChar()
         override fun readTaggedString(tag: ProtoDesc): String = decoder.nextString()
-        override fun readTaggedByteArray(tag: ProtoDesc): ByteArray = decoder.nextByteArray()
+        override fun <N : Number> readTaggedPrimitiveArray(tag: ProtoDesc, numberClass: KClass<N>): PrimitiveArrayView<N> = decoder.nextPrimitiveArray(numberClass, tag.second)
         override fun <E : Enum<E>> readTaggedEnum(tag: ProtoDesc, enumClass: KClass<E>): E = enumFromOrdinal(enumClass, decoder.nextInt(ProtoNumberType.DEFAULT))
 
         override fun KSerialClassDesc.getTag(index: Int) = this.getProtoDesc(index)
@@ -291,8 +308,25 @@ class ProtoBuf(val context: SerialContext? = null) {
             return stringFromUtf8Bytes(bytes)
         }
 
-        fun nextByteArray(): ByteArray {
-            return this.nextObject()
+        fun <N : Number> nextPrimitiveArray(numberClass: KClass<N>,
+                                            format: ProtoNumberType): PrimitiveArrayView<N> {
+            if (curTag.second != SIZE_DELIMITED) throw ProtobufDecodingException("Unexpected wire type: ${curTag.second}")
+            val len = decode32()
+            check(len >= 0)
+            @Suppress("UNCHECKED_CAST")
+            val ans = when(numberClass) {
+                Byte::class -> PrimitiveArrayView.adapt(inp.readExactNBytes(len)) as PrimitiveArrayView<N>
+                Int::class -> {
+                    val intArray = IntArray(len)
+                    for (i in intArray.indices) {
+                        intArray[i] = decode32(format)
+                    }
+                    PrimitiveArrayView.adapt(intArray) as PrimitiveArrayView<N>
+                }
+                else -> TODO()
+            }
+            readTag()
+            return ans
         }
 
         private fun decode32(format: ProtoNumberType = ProtoNumberType.DEFAULT, eofAllowed: Boolean = false): Int = when (format) {

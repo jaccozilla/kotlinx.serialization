@@ -16,6 +16,8 @@
 
 package kotlinx.io
 
+import java.nio.IntBuffer
+
 typealias JByteBuffer = java.nio.ByteBuffer
 typealias JByteOrder = java.nio.ByteOrder
 
@@ -64,6 +66,7 @@ actual class ByteBuffer private actual constructor() {
     actual fun putDouble(value: Double, index: Int): ByteBuffer {dw.putDouble(index, value); return this}
 
     actual fun array(): ByteArray = dw.array()
+
     actual companion object {
         actual fun allocate(capacity: Int) = ByteBuffer(java.nio.ByteBuffer.allocate(capacity))
     }
