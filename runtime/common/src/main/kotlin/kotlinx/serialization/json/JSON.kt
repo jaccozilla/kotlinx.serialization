@@ -21,6 +21,7 @@ import kotlinx.serialization.*
 import kotlinx.serialization.internal.ByteSerializer
 import kotlinx.serialization.internal.IntSerializer
 import kotlinx.serialization.internal.createString
+import kotlinx.serialization.internal.readExactNBytes
 import kotlin.reflect.KClass
 
 data class JSON(
@@ -319,7 +320,13 @@ data class JSON(
         override fun readCharValue(): Char = p.takeStr().single()
         override fun readStringValue(): String = p.takeStr()
         override fun <T : Number> readPrimitiveArrayValue(numberClass: KClass<T>): PrimitiveArrayView<T> {
-            TODO()
+            val ans: PrimitiveArrayView<*> = when(numberClass) {
+                Byte::class -> PrimitiveArrayView.adapt(readSerializableValue(ByteSerializer.list).toByteArray())
+                Int::class -> PrimitiveArrayView.adapt(readSerializableValue(IntSerializer.list).toIntArray())
+                else -> TODO()
+            }
+            @Suppress("UNCHECKED_CAST")
+            return ans as PrimitiveArrayView<T>
         }
 
         override fun <T : Enum<T>> readEnumValue(enumClass: KClass<T>): T = enumFromName(enumClass, p.takeStr())

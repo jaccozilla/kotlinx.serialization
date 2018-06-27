@@ -57,7 +57,8 @@ class CBORWriterTest {
 
     @Test
     fun writeArrays() {
-        val test = ArrayZoo(byteArrayOf(Byte.MIN_VALUE, 0, Byte.MAX_VALUE), arrayOf(Byte.MIN_VALUE, 1, Byte.MAX_VALUE))
-        CBOR.dumps(test) shouldBe "bf696279746541727261798380007f696172726179427974659f387f01187fffff"
+        val test = ArrayZoo(byteArrayOf(Byte.MIN_VALUE, 0, Byte.MAX_VALUE), arrayOf(Byte.MIN_VALUE, 1, Byte.MAX_VALUE),
+                intArrayOf(Int.MIN_VALUE, 2, Int.MAX_VALUE), arrayOf(Int.MIN_VALUE, 3, Int.MAX_VALUE))
+        CBOR.dumps(test) shouldBe "bf696279746541727261794380007f696172726179427974659f387f01187fff68696e744172726179833a7fffffff021a7fffffff686172726179496e749f3a7fffffff031a7fffffffffff"
     }
 }

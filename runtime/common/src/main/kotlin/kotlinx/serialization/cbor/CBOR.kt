@@ -119,11 +119,18 @@ class CBOR(val context: SerialContext? = null, val updateMode: UpdateMode = Upda
         }
 
         fun encodePrimitiveArray(value: PrimitiveArrayView<*>) {
-            val header = composeNumber(value.size.toLong())
-            header[0] = header[0] or HEADER_ARRAY.toByte()
-            output.write(header)
+            val headerAndSize = composeNumber(value.size.toLong())
+            // byteArray has its own header type
+            val header: Byte = if (value is PrimitiveArrayView.ByteArrayView) HEADER_BYTES else HEADER_ARRAY.toByte()
+            headerAndSize[0] = headerAndSize[0] or header
+            output.write(headerAndSize)
             when (value) {
                 is PrimitiveArrayView.ByteArrayView -> output.write(value.array)
+                is PrimitiveArrayView.IntArrayView -> {
+                    for (intValue in value) {
+                        output.write(composeNumber(intValue.toLong()))
+                    }
+                }
                 else -> TODO()
             }
         }
@@ -278,6 +285,19 @@ class CBOR(val context: SerialContext? = null, val updateMode: UpdateMode = Upda
             readByte()
         }
 
+        private fun checkHeader(expectedHeader: Int, headerTypeName: String) {
+            val header = curByte and HEADER_MASK
+            if ((header) != expectedHeader) throw CBORParsingException(
+                    "Expected $headerTypeName header (${HexConverter.toHexString(expectedHeader)}), but found ${HexConverter.toHexString(header)} in ${HexConverter.toHexString(curByte)}")
+        }
+
+        private fun readByteArray() : ByteArray {
+            val strLen = readNumber().toInt()
+            val array = input.readExactNBytes(strLen)
+            readByte()
+            return array
+        }
+
         fun isNull() = curByte == NULL
 
         fun nextNull(): Nothing? {
@@ -300,8 +320,7 @@ class CBOR(val context: SerialContext? = null, val updateMode: UpdateMode = Upda
                 skipByte(BEGIN_ARRAY)
                 return -1
             }
-            if ((curByte and HEADER_MASK) != HEADER_ARRAY)
-                throw CBORParsingException("Expected start of array, but found ${HexConverter.toHexString(curByte)}")
+            checkHeader(HEADER_ARRAY, "start of array")
             val arrayLen = readNumber().toInt()
             readByte()
             return arrayLen
@@ -314,23 +333,32 @@ class CBOR(val context: SerialContext? = null, val updateMode: UpdateMode = Upda
         fun end() = skipByte(BREAK)
 
         fun nextString(): String {
-            if ((curByte and HEADER_MASK) != HEADER_STRING.toInt()) throw CBORParsingException("Expected start of string, but found ${HexConverter.toHexString(curByte)}")
-            val strLen = readNumber().toInt()
-            val arr = input.readExactNBytes(strLen)
+            checkHeader(HEADER_STRING.toInt(), "start of string")
+            val arr = readByteArray()
             val ans = stringFromUtf8Bytes(arr)
-            readByte()
             return ans
         }
 
         fun <T : Number> nextPrimitiveArray(numberClass: KClass<T>): PrimitiveArrayView<T> {
-            if ((curByte and HEADER_MASK) != HEADER_ARRAY) throw CBORParsingException("Expected start of array, but found ${HexConverter.toHexString(curByte)}")
-            val arrayLen = readNumber().toInt()
-
-            val ans: PrimitiveArrayView<*> = when(numberClass) {
-                Byte::class -> PrimitiveArrayView.adapt(input.readExactNBytes(arrayLen))
-                else -> TODO()
+            val ans: PrimitiveArrayView<*> = if (numberClass == Byte::class) {
+                // byte arrays are written under their own header
+                checkHeader(HEADER_BYTES.toInt(), "start of bytes")
+                PrimitiveArrayView.adapt(readByteArray())
             }
-            readByte()
+            else {
+                checkHeader(HEADER_ARRAY, "start of array")
+                val arrayLen = nextNumber().toInt()
+                when (numberClass) {
+                    Int::class -> {
+                        val array = IntArray(arrayLen)
+                        for (i in array.indices) {
+                            array[i] = nextNumber().toInt()
+                        }
+                        PrimitiveArrayView.adapt(array)
+                    }
+                    else -> TODO()
+                }
+            }
 
             @Suppress("UNCHECKED_CAST")
             return ans as PrimitiveArrayView<T>
@@ -400,6 +428,7 @@ class CBOR(val context: SerialContext? = null, val updateMode: UpdateMode = Upda
         private const val HEADER_MASK: Int = 0b111_00000
         private const val HEADER_STRING: Byte = 0b011_00000
         private const val HEADER_NEGATIVE: Byte = 0b001_00000
+        private const val HEADER_BYTES: Byte = 0b010_00000
         private const val HEADER_ARRAY: Int = 0b100_00000
 
         val plain = CBOR()

@@ -51,9 +51,10 @@ message TestRepeatedIntMessage {
 }
 
 message TestPackedListsMessage {
-    repeated int32 i32 = 1 [packed=true];
-    repeated sint32 si32 = 2 [packed=true];
-    repeated fixed32 fi32 = 3 [packed=true];
+    repeated bytes bArray = 1;
+    repeated int32 i32 = 10 [packed=true];
+    repeated sint32 si32 = 11 [packed=true];
+    repeated fixed32 fi32 = 12 [packed=true];
 }
 
 message TestRepeatedObjectMessage {

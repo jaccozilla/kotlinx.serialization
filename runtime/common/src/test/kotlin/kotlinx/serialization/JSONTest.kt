@@ -16,6 +16,8 @@
 
 package kotlinx.serialization
 
+import kotlinx.serialization.internal.ByteArraySerializer
+import kotlinx.serialization.internal.IntArraySerializer
 import kotlinx.serialization.json.JSON
 import kotlin.test.Test
 import kotlin.test.assertEquals

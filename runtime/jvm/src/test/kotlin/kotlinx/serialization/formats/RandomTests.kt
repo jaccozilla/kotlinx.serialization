@@ -20,6 +20,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.dataformat.cbor.CBORFactory
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
+import com.google.protobuf.ByteString
 import com.google.protobuf.GeneratedMessageV3
 import io.kotlintest.properties.Gen
 import io.kotlintest.properties.forAll
@@ -41,11 +42,13 @@ import kotlinx.serialization.formats.proto.TestData.TestRepeatedIntMessage
 import kotlinx.serialization.formats.proto.TestData.TestRepeatedObjectMessage
 import kotlinx.serialization.formats.proto.TestData.TestSignedInt
 import kotlinx.serialization.formats.proto.TestData.TestSignedLong
+import kotlinx.serialization.internal.ByteArraySerializer
 import kotlinx.serialization.internal.HexConverter
 import kotlinx.serialization.internal.IntArraySerializer
 import kotlinx.serialization.protobuf.ProtoBuf
 import kotlinx.serialization.protobuf.ProtoNumberType
 import kotlinx.serialization.protobuf.ProtoType
+import kotlinx.serialization.toUtf8Bytes
 import java.io.ByteArrayOutputStream
 
 fun GeneratedMessageV3.toHex(): String {
@@ -203,19 +206,29 @@ object KTestData {
 
     @Serializable
     data class KTestPackedListMessage(
-            @SerialId(1) @Serializable(IntArraySerializer::class) val i32: IntArray,
-            @SerialId(2) @Serializable(IntArraySerializer::class) @ProtoType(ProtoNumberType.SIGNED) val si32: IntArray,
-            @SerialId(3) @Serializable(IntArraySerializer::class) @ProtoType(ProtoNumberType.FIXED) val fi32: IntArray
+            @SerialId(1) @Serializable(ByteArraySerializer::class) val b: ByteArray,
+            @SerialId(10) @Serializable(IntArraySerializer::class) val i32: IntArray,
+            @SerialId(11) @Serializable(IntArraySerializer::class) @ProtoType(ProtoNumberType.SIGNED) val si32: IntArray,
+            @SerialId(12) @Serializable(IntArraySerializer::class) @ProtoType(ProtoNumberType.FIXED) val fi32: IntArray
     ) : IMessage {
-        override fun toProtobufMessage(): GeneratedMessageV3 = TestData.TestPackedListsMessage.newBuilder().addAllI32(
-                i32.asList()).addAllSi32(si32.asList()).addAllFi32(fi32.asList()).build()
+        override fun toProtobufMessage(): GeneratedMessageV3 = TestData.TestPackedListsMessage.newBuilder()
+                .addBArray(ByteString.copyFrom(b))
+                .addAllI32(i32.asList())
+                .addAllSi32(si32.asList())
+                .addAllFi32(fi32.asList()).build()
 
-        override fun equals(other: Any?) = other is KTestPackedListMessage && i32.contentEquals(
-                other.i32) && si32.contentEquals(other.si32) && fi32.contentEquals(other.fi32)
+        override fun equals(other: Any?) = other is KTestPackedListMessage
+                && b.contentEquals(other.b)
+                && i32.contentEquals(other.i32)
+                && si32.contentEquals(other.si32)
+                && fi32.contentEquals(other.fi32)
 
         companion object : Gen<KTestPackedListMessage> {
-            override fun generate() = KTestPackedListMessage(Gen.list(Gen.int()).generate().toIntArray(),
-                    Gen.list(Gen.int()).generate().toIntArray(), Gen.list(Gen.int()).generate().toIntArray())
+            override fun generate() = KTestPackedListMessage(
+                    Gen.string().generate().toUtf8Bytes(),
+                    Gen.list(Gen.int()).generate().toIntArray(),
+                    Gen.list(Gen.int()).generate().toIntArray(),
+                    Gen.list(Gen.int()).generate().toIntArray())
         }
     }
 
