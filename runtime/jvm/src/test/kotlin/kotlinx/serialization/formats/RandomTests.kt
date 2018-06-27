@@ -28,8 +28,21 @@ import kotlinx.serialization.Optional
 import kotlinx.serialization.SerialId
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.cbor.CBOR
-import kotlinx.serialization.formats.proto.TestData.*
+import kotlinx.serialization.formats.proto.TestData
+import kotlinx.serialization.formats.proto.TestData.TestAllTypes
+import kotlinx.serialization.formats.proto.TestData.TestBoolean
+import kotlinx.serialization.formats.proto.TestData.TestDouble
+import kotlinx.serialization.formats.proto.TestData.TestEnum
+import kotlinx.serialization.formats.proto.TestData.TestFixedInt
+import kotlinx.serialization.formats.proto.TestData.TestInt32
+import kotlinx.serialization.formats.proto.TestData.TestMap
+import kotlinx.serialization.formats.proto.TestData.TestOuterMessage
+import kotlinx.serialization.formats.proto.TestData.TestRepeatedIntMessage
+import kotlinx.serialization.formats.proto.TestData.TestRepeatedObjectMessage
+import kotlinx.serialization.formats.proto.TestData.TestSignedInt
+import kotlinx.serialization.formats.proto.TestData.TestSignedLong
 import kotlinx.serialization.internal.HexConverter
+import kotlinx.serialization.internal.IntArraySerializer
 import kotlinx.serialization.protobuf.ProtoBuf
 import kotlinx.serialization.protobuf.ProtoNumberType
 import kotlinx.serialization.protobuf.ProtoType
@@ -189,6 +202,25 @@ object KTestData {
     }
 
     @Serializable
+    data class KTestPackedListMessage(
+            @SerialId(1) @Serializable(IntArraySerializer::class) val i32: IntArray,
+            @SerialId(2) @Serializable(IntArraySerializer::class) @ProtoType(ProtoNumberType.SIGNED) val si32: IntArray,
+            @SerialId(3) @Serializable(IntArraySerializer::class) @ProtoType(ProtoNumberType.FIXED) val fi32: IntArray
+    ) : IMessage {
+        override fun toProtobufMessage(): GeneratedMessageV3 = TestData.TestPackedListsMessage.newBuilder().addAllI32(
+                i32.asList()).addAllSi32(si32.asList()).addAllFi32(fi32.asList()).build()
+
+        override fun equals(other: Any?) = other is KTestPackedListMessage && i32.contentEquals(
+                other.i32) && si32.contentEquals(other.si32) && fi32.contentEquals(other.fi32)
+
+        companion object : Gen<KTestPackedListMessage> {
+            override fun generate() = KTestPackedListMessage(Gen.list(Gen.int()).generate().toIntArray(),
+                    Gen.list(Gen.int()).generate().toIntArray(), Gen.list(Gen.int()).generate().toIntArray())
+        }
+    }
+
+
+    @Serializable
     data class KTestObjectListMessage(
             @SerialId(1) val inner: List<KTestAllTypes>
     ) : IMessage {
@@ -301,6 +333,7 @@ class RandomTest : ShouldSpec() {
             should("serialize all base random types") { forAll(KTestData.KTestAllTypes.Companion) { dumpCompare(it) } }
             should("serialize random messages with embedded message") { forAll(KTestData.KTestOuterMessage.Companion) { dumpCompare(it) } }
             should("serialize random messages with primitive list fields as repeated") { forAll(KTestData.KTestIntListMessage.Companion) { dumpCompare(it) } }
+            should("serialize random messages with packed list fields") { forAll(KTestData.KTestPackedListMessage.Companion) { dumpCompare(it) } }
             should("serialize messages with object list fields as repeated") { forAll(KTestData.KTestObjectListMessage.Companion) { dumpCompare(it) } }
             should("serialize messages with scalar-key maps") { forAll(KTestData.KTestMap.Companion) { dumpCompare(it) } }
         }
@@ -315,6 +348,7 @@ class RandomTest : ShouldSpec() {
             should("read all base random types") { forAll(KTestData.KTestAllTypes.Companion) { readCompare(it) } }
             should("read random messages with embedded message") { forAll(KTestData.KTestOuterMessage.Companion) { readCompare(it) } }
             should("read random messages with primitive list fields as repeated") { forAll(KTestData.KTestIntListMessage.Companion) { readCompare(it) } }
+            should("read random messages with packed list fields") { forAll(KTestData.KTestPackedListMessage.Companion) { readCompare(it) } }
             should("read random messages with object list fields as repeated") { forAll(KTestData.KTestObjectListMessage.Companion) { readCompare(it) } }
             should("read messages with scalar-key maps") { forAll(KTestData.KTestMap.Companion) { readCompare(it) } }
         }
@@ -330,6 +364,7 @@ class RandomTest : ShouldSpec() {
             should("serialize all base random types") { forAll(KTestData.KTestAllTypes.Companion) { dumpCBORCompare(it) } }
             should("serialize random messages with embedded message") { forAll(KTestData.KTestOuterMessage.Companion) { dumpCBORCompare(it) } }
             should("serialize random messages with primitive list fields") { forAll(KTestData.KTestIntListMessage.Companion) { dumpCBORCompare(it) } }
+            should("serialize random messages with packed list fields") { forAll(KTestData.KTestPackedListMessage.Companion) { dumpCBORCompare(it) } }
             should("serialize messages with object list fields") { forAll(KTestData.KTestObjectListMessage.Companion) { dumpCBORCompare(it) } }
             should("serialize messages with scalar-key maps") { forAll(KTestData.KTestMap.Companion) { dumpCBORCompare(it) } }
         }
@@ -343,6 +378,7 @@ class RandomTest : ShouldSpec() {
             should("read random enums") { forAll(KTestData.KTestEnum.Companion) { readCBORCompare(it) } }
             should("read all base random types") { forAll(KTestData.KTestAllTypes.Companion) { readCBORCompare(it) } }
             should("read random messages with embedded message") { forAll(KTestData.KTestOuterMessage.Companion) { readCBORCompare(it) } }
+            should("read random messages with packed list fields") { forAll(KTestData.KTestPackedListMessage.Companion) { readCBORCompare(it) } }
             should("read random messages with primitive list fields") { forAll(KTestData.KTestIntListMessage.Companion) { readCBORCompare(it) } }
             should("read random messages with object list fields") { forAll(KTestData.KTestObjectListMessage.Companion) { readCBORCompare(it) } }
         }

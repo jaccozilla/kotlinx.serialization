@@ -75,6 +75,6 @@ class ProtobufReaderTest {
 
     @Test
     fun readIntArray() {
-        ProtoBuf.loads<TestIntArray>("0a030080808080f8ffffffff01ffffffff0712030000000000000080ffffff7f") shouldBe t8
+        ProtoBuf.loads<TestIntArray>("0a100080808080f8ffffffff01ffffffff07120c0000000000000080ffffff7f") shouldBe t8
     }
 }

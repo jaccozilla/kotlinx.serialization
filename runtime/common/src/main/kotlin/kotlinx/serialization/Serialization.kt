@@ -242,6 +242,7 @@ abstract class KInput internal constructor() {
     abstract fun <T : Number> readPrimitiveArrayValue(numberClass: KClass<T>): PrimitiveArrayView<T>
     abstract fun <T : Enum<T>> readEnumValue(enumClass: KClass<T> ): T
 
+    inline fun <reified T : Number> readPrimitiveArrayValue(): PrimitiveArrayView<T> = readPrimitiveArrayValue(T::class)
     inline fun <reified T : Enum<T>> readEnumValue(): T = readEnumValue(T::class)
 
     open fun <T : Any?> readSerializableValue(loader: KSerialLoader<T>): T = loader.load(this)

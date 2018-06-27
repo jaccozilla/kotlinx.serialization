@@ -159,7 +159,7 @@ data class JSON(
         }
 
         override fun writePrimitiveArrayValue(value: PrimitiveArrayView<*>) {
-            when(value) {
+            when (value) {
                 is PrimitiveArrayView.ByteArrayView -> writeSerializableValue(ByteSerializer.list, value.array.asList())
                 is PrimitiveArrayView.IntArrayView -> writeSerializableValue(IntSerializer.list, value.array.asList())
             }

@@ -54,9 +54,11 @@ data class TestByteArray(@SerialId(1) @Serializable(ByteArraySerializer::class) 
 
 @Serializable
 // TODO remove @Serializable when IntArray added to compiler
-data class TestIntArray(@SerialId(1) @Serializable(IntArraySerializer::class) val a: IntArray,
-                        @SerialId(2) @Serializable(IntArraySerializer::class) @ProtoType(ProtoNumberType.FIXED) val packed: IntArray) {
-    override fun equals(other: Any?): Boolean = other is TestIntArray && a.contentEquals(other.a) && packed.contentEquals(other.packed)
+data class TestIntArray(@SerialId(1) @Serializable(IntArraySerializer::class) val default: IntArray,
+                        @SerialId(2) @Serializable(IntArraySerializer::class) @ProtoType(
+                                ProtoNumberType.FIXED) val fixed: IntArray) {
+    override fun equals(other: Any?): Boolean = other is TestIntArray && default.contentEquals(
+            other.default) && fixed.contentEquals(other.fixed)
 }
 
 val t1 = TestInt(-150)

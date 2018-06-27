@@ -16,13 +16,39 @@
 
 package kotlinx.serialization.protobuf
 
-import kotlinx.io.*
-import kotlinx.serialization.*
-import kotlinx.serialization.internal.*
+import kotlinx.io.ByteArrayInputStream
+import kotlinx.io.ByteArrayOutputStream
+import kotlinx.io.ByteBuffer
+import kotlinx.io.ByteOrder
+import kotlinx.io.IOException
+import kotlinx.io.InputStream
+import kotlinx.io.PrimitiveArrayView
+import kotlinx.serialization.KInput
+import kotlinx.serialization.KOutput
+import kotlinx.serialization.KSerialClassDesc
+import kotlinx.serialization.KSerialClassKind
+import kotlinx.serialization.KSerialLoader
+import kotlinx.serialization.KSerialSaver
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.SerialContext
+import kotlinx.serialization.SerialId
+import kotlinx.serialization.SerialInfo
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.TaggedInput
+import kotlinx.serialization.TaggedOutput
+import kotlinx.serialization.enumFromOrdinal
+import kotlinx.serialization.internal.HexConverter
+import kotlinx.serialization.internal.SIZE_INDEX
+import kotlinx.serialization.internal.onlySingleOrNull
+import kotlinx.serialization.internal.readExactNBytes
+import kotlinx.serialization.internal.readToByteBuffer
+import kotlinx.serialization.klassSerializer
 import kotlinx.serialization.protobuf.ProtoBuf.Varint.decodeSignedVarintInt
 import kotlinx.serialization.protobuf.ProtoBuf.Varint.decodeSignedVarintLong
 import kotlinx.serialization.protobuf.ProtoBuf.Varint.decodeVarint
 import kotlinx.serialization.protobuf.ProtoBuf.Varint.encodeVarint
+import kotlinx.serialization.stringFromUtf8Bytes
+import kotlinx.serialization.toUtf8Bytes
 import kotlin.reflect.KClass
 
 enum class ProtoNumberType {
@@ -99,19 +125,22 @@ class ProtoBuf(val context: SerialContext? = null) {
 
         fun writePrimitiveArray(array: PrimitiveArrayView<*>, tag: Int, format: ProtoNumberType) {
             val header = encode32((tag shl 3) or SIZE_DELIMITED)
-            val len = encode32(array.size)
             out.write(header)
-            out.write(len)
-            when (array) {
-                is PrimitiveArrayView.ByteArrayView -> out.write(array.array)
+            val data = when (array) {
+                is PrimitiveArrayView.ByteArrayView -> array.array
                 is PrimitiveArrayView.IntArrayView -> {
+                    val arrayOut = ByteArrayOutputStream()
                     for (value in array) {
                         // TODO would be nice if this didn't make the temp ByteArray
-                        out.write(encode32(value, format))
+                        arrayOut.write(encode32(value, format))
                     }
+                    arrayOut.toByteArray()
                 }
                 else -> TODO()
             }
+            val dataLength = encode32(data.size)
+            out.write(dataLength)
+            out.write(data)
         }
 
         fun writeInt(value: Int, tag: Int, format: ProtoNumberType) {
@@ -243,7 +272,7 @@ class ProtoBuf(val context: SerialContext? = null) {
         }
 
         private fun readTag(): Pair<Int, Int> {
-            val header = decode32(eofAllowed = true)
+            val header = inp.decode32(eofAllowed = true)
             curTag = if (header == -1) {
                 -1 to -1
             } else {
@@ -266,7 +295,7 @@ class ProtoBuf(val context: SerialContext? = null) {
 
         fun nextObject(): ByteArray {
             if (curTag.second != SIZE_DELIMITED) throw ProtobufDecodingException("Unexpected wire type: ${curTag.second}")
-            val len = decode32()
+            val len = inp.decode32()
             check(len >= 0)
             val ans = inp.readExactNBytes(len)
             readTag()
@@ -276,7 +305,7 @@ class ProtoBuf(val context: SerialContext? = null) {
         fun nextInt(format: ProtoNumberType): Int {
             val wireType = if (format == ProtoNumberType.FIXED) i32 else VARINT
             if (wireType != curTag.second) throw ProtobufDecodingException("Unexpected wire type: ${curTag.second}")
-            val ans = decode32(format)
+            val ans = inp.decode32(format)
             readTag()
             return ans
         }
@@ -284,7 +313,7 @@ class ProtoBuf(val context: SerialContext? = null) {
         fun nextLong(format: ProtoNumberType): Long {
             val wireType = if (format == ProtoNumberType.FIXED) i64 else VARINT
             if (wireType != curTag.second) throw ProtobufDecodingException("Unexpected wire type: ${curTag.second}")
-            val ans = decode64(format)
+            val ans = inp.decode64(format)
             readTag()
             return ans
         }
@@ -311,17 +340,24 @@ class ProtoBuf(val context: SerialContext? = null) {
         fun <N : Number> nextPrimitiveArray(numberClass: KClass<N>,
                                             format: ProtoNumberType): PrimitiveArrayView<N> {
             if (curTag.second != SIZE_DELIMITED) throw ProtobufDecodingException("Unexpected wire type: ${curTag.second}")
-            val len = decode32()
+            val len = inp.decode32()
             check(len >= 0)
+            val data = inp.readExactNBytes(len)
             @Suppress("UNCHECKED_CAST")
             val ans = when(numberClass) {
-                Byte::class -> PrimitiveArrayView.adapt(inp.readExactNBytes(len)) as PrimitiveArrayView<N>
+                Byte::class -> PrimitiveArrayView.adapt(data) as PrimitiveArrayView<N>
                 Int::class -> {
-                    val intArray = IntArray(len)
-                    for (i in intArray.indices) {
-                        intArray[i] = decode32(format)
+                    val dataIn = ByteArrayInputStream(data)
+                    val intList = ArrayList<Int>(len / 4)
+                    try {
+                        while (true) {
+                            intList.add(dataIn.decode32(format))
+                        }
                     }
-                    PrimitiveArrayView.adapt(intArray) as PrimitiveArrayView<N>
+                    catch (e: IOException) {
+                        // TODO better way to detect the EOF
+                    }
+                    PrimitiveArrayView.adapt(intList.toIntArray()) as PrimitiveArrayView<N>
                 }
                 else -> TODO()
             }
@@ -329,16 +365,19 @@ class ProtoBuf(val context: SerialContext? = null) {
             return ans
         }
 
-        private fun decode32(format: ProtoNumberType = ProtoNumberType.DEFAULT, eofAllowed: Boolean = false): Int = when (format) {
-            ProtoNumberType.DEFAULT -> decodeVarint(inp, 64, eofAllowed).toInt()
-            ProtoNumberType.SIGNED -> decodeSignedVarintInt(inp)
-            ProtoNumberType.FIXED -> inp.readToByteBuffer(4).order(ByteOrder.LITTLE_ENDIAN).getInt()
-        }
+        companion object {
+            private fun InputStream.decode32(format: ProtoNumberType = ProtoNumberType.DEFAULT,
+                                             eofAllowed: Boolean = false): Int = when (format) {
+                ProtoNumberType.DEFAULT -> decodeVarint(this, 64, eofAllowed).toInt()
+                ProtoNumberType.SIGNED -> decodeSignedVarintInt(this)
+                ProtoNumberType.FIXED -> this.readToByteBuffer(4).order(ByteOrder.LITTLE_ENDIAN).getInt()
+            }
 
-        private fun decode64(format: ProtoNumberType = ProtoNumberType.DEFAULT): Long = when (format) {
-            ProtoNumberType.DEFAULT -> decodeVarint(inp, 64)
-            ProtoNumberType.SIGNED -> decodeSignedVarintLong(inp)
-            ProtoNumberType.FIXED -> inp.readToByteBuffer(8).order(ByteOrder.LITTLE_ENDIAN).getLong()
+            private fun InputStream.decode64(format: ProtoNumberType = ProtoNumberType.DEFAULT): Long = when (format) {
+                ProtoNumberType.DEFAULT -> decodeVarint(this, 64)
+                ProtoNumberType.SIGNED -> decodeSignedVarintLong(this)
+                ProtoNumberType.FIXED -> this.readToByteBuffer(8).order(ByteOrder.LITTLE_ENDIAN).getLong()
+            }
         }
     }
 
