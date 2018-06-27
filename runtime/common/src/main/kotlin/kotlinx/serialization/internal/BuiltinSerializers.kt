@@ -16,12 +16,15 @@
 
 package kotlinx.serialization.internal
 
-import kotlinx.io.PrimitiveArrayView
 import kotlinx.serialization.KInput
 import kotlinx.serialization.KOutput
 import kotlinx.serialization.KSerialClassDesc
 import kotlinx.serialization.KSerialClassKind
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.asIntArray
+import kotlinx.serialization.asByteArray
+import kotlinx.serialization.asLongArray
+import kotlinx.serialization.asPrimitiveArray
 import kotlinx.serialization.enumClassName
 import kotlin.reflect.KClass
 
@@ -107,15 +110,22 @@ object StringSerializer : KSerializer<String> {
 object ByteArraySerializer : KSerializer<ByteArray> {
     override val serialClassDesc: KSerialClassDesc = PrimitiveDesc("kotlin.ByteArray")
 
-    override fun save(output: KOutput, obj: ByteArray) = output.writePrimitiveArrayValue(PrimitiveArrayView.adapt(obj))
-    override fun load(input: KInput): ByteArray = (input.readPrimitiveArrayValue(Byte::class) as PrimitiveArrayView.ByteArrayView).array
+    override fun save(output: KOutput, obj: ByteArray) = output.writePrimitiveArrayValue(obj.asPrimitiveArray())
+    override fun load(input: KInput): ByteArray = input.readPrimitiveArrayValue(Byte::class).asByteArray()
 }
 
 object IntArraySerializer : KSerializer<IntArray> {
     override val serialClassDesc: KSerialClassDesc = PrimitiveDesc("kotlin.IntArray")
 
-    override fun save(output: KOutput, obj: IntArray) = output.writePrimitiveArrayValue(PrimitiveArrayView.adapt(obj))
-    override fun load(input: KInput): IntArray = (input.readPrimitiveArrayValue(Int::class) as PrimitiveArrayView.IntArrayView).array
+    override fun save(output: KOutput, obj: IntArray) = output.writePrimitiveArrayValue(obj.asPrimitiveArray())
+    override fun load(input: KInput): IntArray = input.readPrimitiveArrayValue(Int::class).asIntArray()
+}
+
+object LongArraySerializer : KSerializer<LongArray> {
+    override val serialClassDesc: KSerialClassDesc = PrimitiveDesc("kotlin.LongArray")
+
+    override fun save(output: KOutput, obj: LongArray) = output.writePrimitiveArrayValue(obj.asPrimitiveArray())
+    override fun load(input: KInput): LongArray = input.readPrimitiveArrayValue(Long::class).asLongArray()
 }
 
 internal class EnumDesc(override val name: String) : KSerialClassDesc {

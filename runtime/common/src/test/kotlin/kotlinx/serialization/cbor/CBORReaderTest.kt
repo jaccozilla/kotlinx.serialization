@@ -83,11 +83,15 @@ class CBORReaderTest {
 
     @Test
     fun testDecodeArrays() {
-        val test = ArrayZoo(byteArrayOf(Byte.MIN_VALUE, 0, Byte.MAX_VALUE), arrayOf(Byte.MIN_VALUE, 1, Byte.MAX_VALUE),
-                intArrayOf(Int.MIN_VALUE, 2, Int.MAX_VALUE), arrayOf(Int.MIN_VALUE, 3, Int.MAX_VALUE))
+        val test = ArrayZoo(byteArrayOf(Byte.MIN_VALUE, 0, Byte.MAX_VALUE),
+                arrayOf(Byte.MIN_VALUE, 1, Byte.MAX_VALUE),
+                intArrayOf(Int.MIN_VALUE, 2, Int.MAX_VALUE),
+                arrayOf(Int.MIN_VALUE, 3, Int.MAX_VALUE),
+                longArrayOf(Long.MIN_VALUE, 2, Long.MAX_VALUE),
+                arrayOf(Long.MIN_VALUE, 3, Long.MAX_VALUE))
 
         CBOR.loads<ArrayZoo>(
-                "bf696279746541727261794380007f696172726179427974659f387f01187fff68696e744172726179833a7fffffff021a7fffffff686172726179496e749f3a7fffffff031a7fffffffffff"
+                "bf696279746541727261794380007f696172726179427974659f387f01187fff68696e744172726179833a7fffffff021a7fffffff686172726179496e749f3a7fffffff031a7fffffffff696c6f6e674172726179833b7fffffffffffffff021b7fffffffffffffff6961727261794c6f6e679f3b7fffffffffffffff031b7fffffffffffffffffff"
         ) shouldBe test
     }
 }

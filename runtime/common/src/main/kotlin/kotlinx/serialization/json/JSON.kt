@@ -16,12 +16,12 @@
 
 package kotlinx.serialization.json
 
-import kotlinx.io.PrimitiveArrayView
+import kotlinx.serialization.PrimitiveArrayValue
 import kotlinx.serialization.*
 import kotlinx.serialization.internal.ByteSerializer
 import kotlinx.serialization.internal.IntSerializer
+import kotlinx.serialization.internal.LongSerializer
 import kotlinx.serialization.internal.createString
-import kotlinx.serialization.internal.readExactNBytes
 import kotlin.reflect.KClass
 
 data class JSON(
@@ -159,10 +159,12 @@ data class JSON(
             }
         }
 
-        override fun writePrimitiveArrayValue(value: PrimitiveArrayView<*>) {
+        override fun writePrimitiveArrayValue(value: PrimitiveArrayValue<*>) {
             when (value) {
-                is PrimitiveArrayView.ByteArrayView -> writeSerializableValue(ByteSerializer.list, value.array.asList())
-                is PrimitiveArrayView.IntArrayView -> writeSerializableValue(IntSerializer.list, value.array.asList())
+                is PrimitiveArrayValue.ByteArrayValue -> writeSerializableValue(ByteSerializer.list, value.array.asList())
+                is PrimitiveArrayValue.IntArrayValue -> writeSerializableValue(IntSerializer.list, value.array.asList())
+                is PrimitiveArrayValue.LongArrayValue -> writeSerializableValue(LongSerializer.list, value.array.asList())
+                else -> TODO()
             }
         }
 
@@ -319,14 +321,15 @@ data class JSON(
         override fun readDoubleValue(): Double = p.takeStr().toDouble()
         override fun readCharValue(): Char = p.takeStr().single()
         override fun readStringValue(): String = p.takeStr()
-        override fun <T : Number> readPrimitiveArrayValue(numberClass: KClass<T>): PrimitiveArrayView<T> {
-            val ans: PrimitiveArrayView<*> = when(numberClass) {
-                Byte::class -> PrimitiveArrayView.adapt(readSerializableValue(ByteSerializer.list).toByteArray())
-                Int::class -> PrimitiveArrayView.adapt(readSerializableValue(IntSerializer.list).toIntArray())
-                else -> TODO()
+        override fun <T : Number> readPrimitiveArrayValue(numberClass: KClass<T>): PrimitiveArrayValue<T> {
+            val ans: PrimitiveArrayValue<*> = when(numberClass) {
+                Byte::class -> readSerializableValue(ByteSerializer.list).toPrimitiveArray()
+                Int::class -> readSerializableValue(IntSerializer.list).toPrimitiveArray()
+                Long::class -> readSerializableValue(LongSerializer.list).toPrimitiveArray()
+                else -> throw SerializationException("Unknown primitive array type $numberClass")
             }
             @Suppress("UNCHECKED_CAST")
-            return ans as PrimitiveArrayView<T>
+            return ans as PrimitiveArrayValue<T>
         }
 
         override fun <T : Enum<T>> readEnumValue(enumClass: KClass<T>): T = enumFromName(enumClass, p.takeStr())

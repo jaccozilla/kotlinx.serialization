@@ -45,10 +45,11 @@ private fun mapJavaClassNameToKotlin(s: String): String = when(s) {
     "java.util.Map\$Entry" -> MapEntryClassDesc.name
     "byte[]" -> ByteArraySerializer.serialClassDesc.name
     "int[]" -> IntArraySerializer.serialClassDesc.name
+    "long[]" -> LongArraySerializer.serialClassDesc.name
     else -> s
 }
 
-private val primitiveArraySerializers = setOf(ByteArray::class.java, IntArray::class.java)
+private val primitiveArraySerializers = setOf(ByteArray::class.java, IntArray::class.java, LongArray::class.java)
 
 fun <E> serializerByValue(value: E, context: SerialContext? = null): KSerializer<E> {
     val klass = (value as? Any)?.javaClass?.kotlin ?: throw SerializationException("Cannot determine class for value $value")

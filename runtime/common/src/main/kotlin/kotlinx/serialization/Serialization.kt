@@ -16,7 +16,6 @@
 
 package kotlinx.serialization
 
-import kotlinx.io.PrimitiveArrayView
 import kotlinx.serialization.KInput.Companion.UNKNOWN_NAME
 import kotlinx.serialization.internal.UnitSerializer
 import kotlin.reflect.KClass
@@ -139,7 +138,7 @@ abstract class KOutput internal constructor() {
     abstract fun writeDoubleValue(value: Double)
     abstract fun writeCharValue(value: Char)
     abstract fun writeStringValue(value: String)
-    abstract fun writePrimitiveArrayValue(value: PrimitiveArrayView<*>)
+    abstract fun writePrimitiveArrayValue(value: PrimitiveArrayValue<*>)
     abstract fun <T : Enum<T>> writeEnumValue(enumClass: KClass<T>, value: T)
 
     inline fun <reified T : Enum<T>> writeEnumValue(value: T) = writeEnumValue(T::class, value)
@@ -182,7 +181,7 @@ abstract class KOutput internal constructor() {
     abstract fun writeDoubleElementValue(desc: KSerialClassDesc, index: Int, value: Double)
     abstract fun writeCharElementValue(desc: KSerialClassDesc, index: Int, value: Char)
     abstract fun writeStringElementValue(desc: KSerialClassDesc, index: Int, value: String)
-    abstract fun writePrimitiveArrayElementValue(desc: KSerialClassDesc, index: Int, value: PrimitiveArrayView<*>)
+    abstract fun writePrimitiveArrayElementValue(desc: KSerialClassDesc, index: Int, value: PrimitiveArrayValue<*>)
     abstract fun <T : Enum<T>> writeEnumElementValue(desc: KSerialClassDesc, index: Int, enumClass: KClass<T>, value: T)
 
     inline fun <reified T : Enum<T>> writeEnumElementValue(desc: KSerialClassDesc, index: Int, value: T) {
@@ -239,10 +238,10 @@ abstract class KInput internal constructor() {
     abstract fun readDoubleValue(): Double
     abstract fun readCharValue(): Char
     abstract fun readStringValue(): String
-    abstract fun <T : Number> readPrimitiveArrayValue(numberClass: KClass<T>): PrimitiveArrayView<T>
+    abstract fun <T : Number> readPrimitiveArrayValue(numberClass: KClass<T>): PrimitiveArrayValue<T>
     abstract fun <T : Enum<T>> readEnumValue(enumClass: KClass<T> ): T
 
-    inline fun <reified T : Number> readPrimitiveArrayValue(): PrimitiveArrayView<T> = readPrimitiveArrayValue(T::class)
+    inline fun <reified T : Number> readPrimitiveArrayValue(): PrimitiveArrayValue<T> = readPrimitiveArrayValue(T::class)
     inline fun <reified T : Enum<T>> readEnumValue(): T = readEnumValue(T::class)
 
     open fun <T : Any?> readSerializableValue(loader: KSerialLoader<T>): T = loader.load(this)
@@ -369,7 +368,7 @@ open class ElementValueOutput : KOutput() {
     override fun writeDoubleValue(value: Double) = writeValue(value)
     override fun writeCharValue(value: Char) = writeValue(value)
     override fun writeStringValue(value: String) = writeValue(value)
-    override fun writePrimitiveArrayValue(value: PrimitiveArrayView<*>) = writeValue(value)
+    override fun writePrimitiveArrayValue(value: PrimitiveArrayValue<*>) = writeValue(value)
     override fun <T : Enum<T>> writeEnumValue(enumClass: KClass<T>, value: T) = writeValue(value)
 
     // -------------------------------------------------------------------------------------
@@ -386,7 +385,7 @@ open class ElementValueOutput : KOutput() {
     override final fun writeDoubleElementValue(desc: KSerialClassDesc, index: Int, value: Double) { if (writeElement(desc, index)) writeDoubleValue(value) }
     override final fun writeCharElementValue(desc: KSerialClassDesc, index: Int, value: Char) { if (writeElement(desc, index)) writeCharValue(value) }
     override final fun writeStringElementValue(desc: KSerialClassDesc, index: Int, value: String) { if (writeElement(desc, index)) writeStringValue(value) }
-    override final fun writePrimitiveArrayElementValue(desc: KSerialClassDesc, index: Int, value: PrimitiveArrayView<*>) { if (writeElement(desc, index)) writePrimitiveArrayValue(value) }
+    override final fun writePrimitiveArrayElementValue(desc: KSerialClassDesc, index: Int, value: PrimitiveArrayValue<*>) { if (writeElement(desc, index)) writePrimitiveArrayValue(value) }
     override final fun <T : Enum<T>> writeEnumElementValue(desc: KSerialClassDesc, index: Int, enumClass: KClass<T>, value: T) { if (writeElement(desc, index)) writeEnumValue(enumClass, value) }
 
 
@@ -421,8 +420,8 @@ open class ElementValueInput : KInput() {
     override fun readCharValue(): Char = readValue() as Char
     override fun readStringValue(): String = readValue() as String
     @Suppress("UNCHECKED_CAST")
-    override fun <T : Number> readPrimitiveArrayValue(numberClass: KClass<T>): PrimitiveArrayView<T> =
-            readValue() as PrimitiveArrayView<T>
+    override fun <T : Number> readPrimitiveArrayValue(numberClass: KClass<T>): PrimitiveArrayValue<T> =
+            readValue() as PrimitiveArrayValue<T>
 
     @Suppress("UNCHECKED_CAST")
     override fun <T : Enum<T>> readEnumValue(enumClass: KClass<T> ): T =
@@ -476,7 +475,7 @@ open class ValueTransformer {
     open fun transformDoubleValue(desc: KSerialClassDesc, index: Int, value: Double) = value
     open fun transformCharValue(desc: KSerialClassDesc, index: Int, value: Char) = value
     open fun transformStringValue(desc: KSerialClassDesc, index: Int, value: String) = value
-    open fun <T : Number> transformPrimitiveArrayValue(desc: KSerialClassDesc, index: Int, numberClass: KClass<T>, value: PrimitiveArrayView<T>) = value
+    open fun <T : Number> transformPrimitiveArrayValue(desc: KSerialClassDesc, index: Int, numberClass: KClass<T>, value: PrimitiveArrayValue<T>) = value
 
     open fun <T : Enum<T>> transformEnumValue(desc: KSerialClassDesc, index: Int, enumClass: KClass<T>, value: T): T = value
 
@@ -505,7 +504,7 @@ open class ValueTransformer {
         override fun writeDoubleValue(value: Double) { writeNullableValue(value) }
         override fun writeCharValue(value: Char) { writeNullableValue(value) }
         override fun writeStringValue(value: String) { writeNullableValue(value) }
-        override fun writePrimitiveArrayValue(value: PrimitiveArrayView<*>) { writeNullableValue(value) }
+        override fun writePrimitiveArrayValue(value: PrimitiveArrayValue<*>) { writeNullableValue(value) }
         override fun <T : Enum<T>> writeEnumValue(enumClass: KClass<T>, value: T) { writeNullableValue(value) }
 
         override fun <T : Any?> writeSerializableValue(saver: KSerialSaver<T>, value: T) {
@@ -529,7 +528,7 @@ open class ValueTransformer {
         override fun writeDoubleElementValue(desc: KSerialClassDesc, index: Int, value: Double) = writeNullableValue(value)
         override fun writeCharElementValue(desc: KSerialClassDesc, index: Int, value: Char) = writeNullableValue(value)
         override fun writeStringElementValue(desc: KSerialClassDesc, index: Int, value: String) = writeNullableValue(value)
-        override fun writePrimitiveArrayElementValue(desc: KSerialClassDesc, index: Int, value: PrimitiveArrayView<*>) = writeNullableValue(value)
+        override fun writePrimitiveArrayElementValue(desc: KSerialClassDesc, index: Int, value: PrimitiveArrayValue<*>) = writeNullableValue(value)
 
         override fun <T : Enum<T>> writeEnumElementValue(desc: KSerialClassDesc, index: Int, enumClass: KClass<T>, value: T) =
                 writeNullableValue(value)
@@ -562,8 +561,8 @@ open class ValueTransformer {
         override fun readStringValue(): String = transformStringValue(curDesc!!, curIndex, readValue() as String)
 
         @Suppress("UNCHECKED_CAST")
-        override fun <T : Number> readPrimitiveArrayValue(numberClass: KClass<T>): PrimitiveArrayView<T> =
-                transformPrimitiveArrayValue(curDesc!!, curIndex, numberClass, readValue() as PrimitiveArrayView<T>)
+        override fun <T : Number> readPrimitiveArrayValue(numberClass: KClass<T>): PrimitiveArrayValue<T> =
+                transformPrimitiveArrayValue(curDesc!!, curIndex, numberClass, readValue() as PrimitiveArrayValue<T>)
 
         @Suppress("UNCHECKED_CAST")
         override fun <T : Enum<T>> readEnumValue(enumClass: KClass<T> ): T =

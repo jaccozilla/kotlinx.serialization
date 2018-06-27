@@ -55,6 +55,9 @@ message TestPackedListsMessage {
     repeated int32 i32 = 10 [packed=true];
     repeated sint32 si32 = 11 [packed=true];
     repeated fixed32 fi32 = 12 [packed=true];
+    repeated int64 i64 = 20 [packed=true];
+    repeated sint64 si64 = 21 [packed=true];
+    repeated fixed64 fi64 = 22 [packed=true];
 }
 
 message TestRepeatedObjectMessage {

@@ -60,11 +60,16 @@ class ProtobufWriterTest {
 
     @Test
     fun writeBytes() {
-        ProtoBuf.dumps(t7).toLowerCase() shouldBe "0a0300807f"
+        ProtoBuf.dumps(testByteARray).toLowerCase() shouldBe "0a0300807f"
     }
 
     @Test
-    fun writeInts() {
-        ProtoBuf.dumps(t8).toLowerCase() shouldBe "0a100080808080f8ffffffff01ffffffff07120c0000000000000080ffffff7f"
+    fun writeIntArrays() {
+        ProtoBuf.dumps(testIntArray).toLowerCase() shouldBe "0a100080808080f8ffffffff01ffffffff07120c0100000000000080ffffff7f1a070400feffffff0f"
+    }
+
+    @Test
+    fun writeLongArrays() {
+        ProtoBuf.dumps(testLongArray).toLowerCase() shouldBe "0a140080808080808080808001ffffffffffffffff7f121801000000000000000000000000000080ffffffffffffff7f1a0c0400feffffffffffffffff01"
     }
 }

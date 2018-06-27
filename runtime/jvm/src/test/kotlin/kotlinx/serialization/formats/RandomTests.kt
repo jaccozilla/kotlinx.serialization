@@ -45,6 +45,7 @@ import kotlinx.serialization.formats.proto.TestData.TestSignedLong
 import kotlinx.serialization.internal.ByteArraySerializer
 import kotlinx.serialization.internal.HexConverter
 import kotlinx.serialization.internal.IntArraySerializer
+import kotlinx.serialization.internal.LongArraySerializer
 import kotlinx.serialization.protobuf.ProtoBuf
 import kotlinx.serialization.protobuf.ProtoNumberType
 import kotlinx.serialization.protobuf.ProtoType
@@ -209,26 +210,38 @@ object KTestData {
             @SerialId(1) @Serializable(ByteArraySerializer::class) val b: ByteArray,
             @SerialId(10) @Serializable(IntArraySerializer::class) val i32: IntArray,
             @SerialId(11) @Serializable(IntArraySerializer::class) @ProtoType(ProtoNumberType.SIGNED) val si32: IntArray,
-            @SerialId(12) @Serializable(IntArraySerializer::class) @ProtoType(ProtoNumberType.FIXED) val fi32: IntArray
+            @SerialId(12) @Serializable(IntArraySerializer::class) @ProtoType(ProtoNumberType.FIXED) val fi32: IntArray,
+            @SerialId(20) @Serializable(LongArraySerializer::class) val i64: LongArray,
+            @SerialId(21) @Serializable(LongArraySerializer::class) @ProtoType(ProtoNumberType.SIGNED) val si64: LongArray,
+            @SerialId(22) @Serializable(LongArraySerializer::class) @ProtoType(ProtoNumberType.FIXED) val fi64: LongArray
     ) : IMessage {
         override fun toProtobufMessage(): GeneratedMessageV3 = TestData.TestPackedListsMessage.newBuilder()
                 .addBArray(ByteString.copyFrom(b))
                 .addAllI32(i32.asList())
                 .addAllSi32(si32.asList())
-                .addAllFi32(fi32.asList()).build()
+                .addAllFi32(fi32.asList())
+                .addAllI64(i64.asList())
+                .addAllSi64(si64.asList())
+                .addAllFi64(fi64.asList()).build()
 
         override fun equals(other: Any?) = other is KTestPackedListMessage
                 && b.contentEquals(other.b)
                 && i32.contentEquals(other.i32)
                 && si32.contentEquals(other.si32)
                 && fi32.contentEquals(other.fi32)
+                && i64.contentEquals(other.i64)
+                && si64.contentEquals(other.si64)
+                && fi64.contentEquals(other.fi64)
 
         companion object : Gen<KTestPackedListMessage> {
             override fun generate() = KTestPackedListMessage(
                     Gen.string().generate().toUtf8Bytes(),
                     Gen.list(Gen.int()).generate().toIntArray(),
                     Gen.list(Gen.int()).generate().toIntArray(),
-                    Gen.list(Gen.int()).generate().toIntArray())
+                    Gen.list(Gen.int()).generate().toIntArray(),
+                    Gen.list(Gen.long()).generate().toLongArray(),
+                    Gen.list(Gen.long()).generate().toLongArray(),
+                    Gen.list(Gen.long()).generate().toLongArray())
         }
     }
 
@@ -267,7 +280,6 @@ object KTestData {
         }
     }
 }
-
 
 class RandomTest : ShouldSpec() {
     val CBORJackson = ObjectMapper(CBORFactory()).apply { registerKotlinModule() }

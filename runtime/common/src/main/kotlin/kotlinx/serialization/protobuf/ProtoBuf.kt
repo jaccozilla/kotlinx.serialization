@@ -22,7 +22,7 @@ import kotlinx.io.ByteBuffer
 import kotlinx.io.ByteOrder
 import kotlinx.io.IOException
 import kotlinx.io.InputStream
-import kotlinx.io.PrimitiveArrayView
+import kotlinx.serialization.PrimitiveArrayValue
 import kotlinx.serialization.KInput
 import kotlinx.serialization.KOutput
 import kotlinx.serialization.KSerialClassDesc
@@ -36,6 +36,7 @@ import kotlinx.serialization.SerialInfo
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.TaggedInput
 import kotlinx.serialization.TaggedOutput
+import kotlinx.serialization.asPrimitiveArray
 import kotlinx.serialization.enumFromOrdinal
 import kotlinx.serialization.internal.HexConverter
 import kotlinx.serialization.internal.SIZE_INDEX
@@ -48,6 +49,7 @@ import kotlinx.serialization.protobuf.ProtoBuf.Varint.decodeSignedVarintLong
 import kotlinx.serialization.protobuf.ProtoBuf.Varint.decodeVarint
 import kotlinx.serialization.protobuf.ProtoBuf.Varint.encodeVarint
 import kotlinx.serialization.stringFromUtf8Bytes
+import kotlinx.serialization.toPrimitiveArray
 import kotlinx.serialization.toUtf8Bytes
 import kotlin.reflect.KClass
 
@@ -85,7 +87,7 @@ class ProtoBuf(val context: SerialContext? = null) {
         override fun writeTaggedBoolean(tag: ProtoDesc, value: Boolean) = encoder.writeInt(if (value) 1 else 0, tag.first, ProtoNumberType.DEFAULT)
         override fun writeTaggedChar(tag: ProtoDesc, value: Char) = encoder.writeInt(value.toInt(), tag.first, tag.second)
         override fun writeTaggedString(tag: ProtoDesc, value: String) = encoder.writeString(value, tag.first)
-        override fun writeTaggedPrimitiveArray(tag: ProtoDesc, value: PrimitiveArrayView<*>) = encoder.writePrimitiveArray(value, tag.first, tag.second)
+        override fun writeTaggedPrimitiveArray(tag: ProtoDesc, value: PrimitiveArrayValue<*>) = encoder.writePrimitiveArray(value, tag.first, tag.second)
         override fun <E : Enum<E>> writeTaggedEnum(tag: ProtoDesc, enumClass: KClass<E>, value: E) = encoder.writeInt(value.ordinal, tag.first, ProtoNumberType.DEFAULT)
 
         override fun KSerialClassDesc.getTag(index: Int) = this.getProtoDesc(index)
@@ -123,16 +125,24 @@ class ProtoBuf(val context: SerialContext? = null) {
             out.write(bytes)
         }
 
-        fun writePrimitiveArray(array: PrimitiveArrayView<*>, tag: Int, format: ProtoNumberType) {
+        fun writePrimitiveArray(array: PrimitiveArrayValue<*>, tag: Int, format: ProtoNumberType) {
             val header = encode32((tag shl 3) or SIZE_DELIMITED)
             out.write(header)
             val data = when (array) {
-                is PrimitiveArrayView.ByteArrayView -> array.array
-                is PrimitiveArrayView.IntArrayView -> {
+                is PrimitiveArrayValue.ByteArrayValue -> array.array
+                is PrimitiveArrayValue.IntArrayValue -> {
                     val arrayOut = ByteArrayOutputStream()
                     for (value in array) {
                         // TODO would be nice if this didn't make the temp ByteArray
                         arrayOut.write(encode32(value, format))
+                    }
+                    arrayOut.toByteArray()
+                }
+                is PrimitiveArrayValue.LongArrayValue -> {
+                    val arrayOut = ByteArrayOutputStream()
+                    for (value in array) {
+                        // TODO would be nice if this didn't make the temp ByteArray
+                        arrayOut.write(encode64(value, format))
                     }
                     arrayOut.toByteArray()
                 }
@@ -232,7 +242,7 @@ class ProtoBuf(val context: SerialContext? = null) {
         override fun readTaggedDouble(tag: ProtoDesc): Double = decoder.nextDouble()
         override fun readTaggedChar(tag: ProtoDesc): Char = decoder.nextInt(tag.second).toChar()
         override fun readTaggedString(tag: ProtoDesc): String = decoder.nextString()
-        override fun <N : Number> readTaggedPrimitiveArray(tag: ProtoDesc, numberClass: KClass<N>): PrimitiveArrayView<N> = decoder.nextPrimitiveArray(numberClass, tag.second)
+        override fun <N : Number> readTaggedPrimitiveArray(tag: ProtoDesc, numberClass: KClass<N>): PrimitiveArrayValue<N> = decoder.nextPrimitiveArray(numberClass, tag.second)
         override fun <E : Enum<E>> readTaggedEnum(tag: ProtoDesc, enumClass: KClass<E>): E = enumFromOrdinal(enumClass, decoder.nextInt(ProtoNumberType.DEFAULT))
 
         override fun KSerialClassDesc.getTag(index: Int) = this.getProtoDesc(index)
@@ -338,14 +348,14 @@ class ProtoBuf(val context: SerialContext? = null) {
         }
 
         fun <N : Number> nextPrimitiveArray(numberClass: KClass<N>,
-                                            format: ProtoNumberType): PrimitiveArrayView<N> {
+                                            format: ProtoNumberType): PrimitiveArrayValue<N> {
             if (curTag.second != SIZE_DELIMITED) throw ProtobufDecodingException("Unexpected wire type: ${curTag.second}")
             val len = inp.decode32()
             check(len >= 0)
             val data = inp.readExactNBytes(len)
             @Suppress("UNCHECKED_CAST")
-            val ans = when(numberClass) {
-                Byte::class -> PrimitiveArrayView.adapt(data) as PrimitiveArrayView<N>
+            val ans: PrimitiveArrayValue<N> = when(numberClass) {
+                Byte::class -> data.asPrimitiveArray() as PrimitiveArrayValue<N>
                 Int::class -> {
                     val dataIn = ByteArrayInputStream(data)
                     val intList = ArrayList<Int>(len / 4)
@@ -357,9 +367,22 @@ class ProtoBuf(val context: SerialContext? = null) {
                     catch (e: IOException) {
                         // TODO better way to detect the EOF
                     }
-                    PrimitiveArrayView.adapt(intList.toIntArray()) as PrimitiveArrayView<N>
+                    intList.toPrimitiveArray() as PrimitiveArrayValue<N>
                 }
-                else -> TODO()
+                Long::class -> {
+                    val dataIn = ByteArrayInputStream(data)
+                    val longList = ArrayList<Long>(len / 8)
+                    try {
+                        while (true) {
+                            longList.add(dataIn.decode64(format))
+                        }
+                    }
+                    catch (e: IOException) {
+                        // TODO better way to detect the EOF
+                    }
+                    longList.toPrimitiveArray() as PrimitiveArrayValue<N>
+                }
+                else -> throw SerializationException("Unknown primitive array type $numberClass")
             }
             readTag()
             return ans

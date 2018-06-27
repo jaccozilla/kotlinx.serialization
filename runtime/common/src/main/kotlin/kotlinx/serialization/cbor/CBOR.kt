@@ -78,7 +78,7 @@ class CBOR(val context: SerialContext? = null, val updateMode: UpdateMode = Upda
         }
 
         override fun writeStringValue(value: String) = encoder.encodeString(value)
-        override fun writePrimitiveArrayValue(value: PrimitiveArrayView<*>) = encoder.encodePrimitiveArray(value)
+        override fun writePrimitiveArrayValue(value: PrimitiveArrayValue<*>) = encoder.encodePrimitiveArray(value)
 
         override fun writeFloatValue(value: Float) = encoder.encodeFloat(value)
         override fun writeDoubleValue(value: Double) = encoder.encodeDouble(value)
@@ -118,20 +118,19 @@ class CBOR(val context: SerialContext? = null, val updateMode: UpdateMode = Upda
             output.write(data)
         }
 
-        fun encodePrimitiveArray(value: PrimitiveArrayView<*>) {
+        fun encodePrimitiveArray(value: PrimitiveArrayValue<*>) {
             val headerAndSize = composeNumber(value.size.toLong())
             // byteArray has its own header type
-            val header: Byte = if (value is PrimitiveArrayView.ByteArrayView) HEADER_BYTES else HEADER_ARRAY.toByte()
+            val header: Byte = if (value is PrimitiveArrayValue.ByteArrayValue) HEADER_BYTES else HEADER_ARRAY.toByte()
             headerAndSize[0] = headerAndSize[0] or header
             output.write(headerAndSize)
             when (value) {
-                is PrimitiveArrayView.ByteArrayView -> output.write(value.array)
-                is PrimitiveArrayView.IntArrayView -> {
-                    for (intValue in value) {
-                        output.write(composeNumber(intValue.toLong()))
+                is PrimitiveArrayValue.ByteArrayValue -> output.write(value.array)
+                else -> {
+                    for (numberValue in value) {
+                        output.write(composeNumber(numberValue.toLong()))
                     }
                 }
-                else -> TODO()
             }
         }
 
@@ -245,7 +244,7 @@ class CBOR(val context: SerialContext? = null, val updateMode: UpdateMode = Upda
 
         override fun readStringValue() = decoder.nextString()
         override fun <T : Number> readPrimitiveArrayValue(
-                numberClass: KClass<T>): PrimitiveArrayView<T> = decoder.nextPrimitiveArray(numberClass)
+                numberClass: KClass<T>): PrimitiveArrayValue<T> = decoder.nextPrimitiveArray(numberClass)
 
         override fun readNotNullMark(): Boolean = !decoder.isNull()
 
@@ -339,11 +338,11 @@ class CBOR(val context: SerialContext? = null, val updateMode: UpdateMode = Upda
             return ans
         }
 
-        fun <T : Number> nextPrimitiveArray(numberClass: KClass<T>): PrimitiveArrayView<T> {
-            val ans: PrimitiveArrayView<*> = if (numberClass == Byte::class) {
+        fun <T : Number> nextPrimitiveArray(numberClass: KClass<T>): PrimitiveArrayValue<T> {
+            val ans: PrimitiveArrayValue<*> = if (numberClass == Byte::class) {
                 // byte arrays are written under their own header
                 checkHeader(HEADER_BYTES.toInt(), "start of bytes")
-                PrimitiveArrayView.adapt(readByteArray())
+                readByteArray().asPrimitiveArray()
             }
             else {
                 checkHeader(HEADER_ARRAY, "start of array")
@@ -354,14 +353,21 @@ class CBOR(val context: SerialContext? = null, val updateMode: UpdateMode = Upda
                         for (i in array.indices) {
                             array[i] = nextNumber().toInt()
                         }
-                        PrimitiveArrayView.adapt(array)
+                        array.asPrimitiveArray()
                     }
-                    else -> TODO()
+                    Long::class -> {
+                        val array = LongArray(arrayLen)
+                        for (i in array.indices) {
+                            array[i] = nextNumber()
+                        }
+                        array.asPrimitiveArray()
+                    }
+                    else -> throw SerializationException("Unknown primitive array type $numberClass")
                 }
             }
 
             @Suppress("UNCHECKED_CAST")
-            return ans as PrimitiveArrayView<T>
+            return ans as PrimitiveArrayValue<T>
         }
 
         fun nextNumber(): Long {

@@ -21,6 +21,7 @@ import kotlinx.serialization.SerialId
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.internal.ByteArraySerializer
 import kotlinx.serialization.internal.IntArraySerializer
+import kotlinx.serialization.internal.LongArraySerializer
 
 @Serializable
 data class TestInt(@SerialId(1) @ProtoType(ProtoNumberType.SIGNED) val a: Int)
@@ -55,10 +56,23 @@ data class TestByteArray(@SerialId(1) @Serializable(ByteArraySerializer::class) 
 @Serializable
 // TODO remove @Serializable when IntArray added to compiler
 data class TestIntArray(@SerialId(1) @Serializable(IntArraySerializer::class) val default: IntArray,
-                        @SerialId(2) @Serializable(IntArraySerializer::class) @ProtoType(
-                                ProtoNumberType.FIXED) val fixed: IntArray) {
-    override fun equals(other: Any?): Boolean = other is TestIntArray && default.contentEquals(
-            other.default) && fixed.contentEquals(other.fixed)
+                        @SerialId(2) @Serializable(IntArraySerializer::class) @ProtoType(ProtoNumberType.FIXED) val fixed: IntArray,
+                        @SerialId(3) @Serializable(IntArraySerializer::class) @ProtoType(ProtoNumberType.SIGNED) val signed: IntArray) {
+    override fun equals(other: Any?): Boolean = other is TestIntArray
+            && default.contentEquals(other.default)
+            && fixed.contentEquals(other.fixed)
+            && signed.contentEquals(other.signed)
+}
+
+@Serializable
+// TODO remove @Serializable when IntArray added to compiler
+data class TestLongArray(@SerialId(1) @Serializable(LongArraySerializer::class) val default: LongArray,
+                         @SerialId(2) @Serializable(LongArraySerializer::class) @ProtoType(ProtoNumberType.FIXED) val fixed: LongArray,
+                         @SerialId(3) @Serializable(LongArraySerializer::class) @ProtoType(ProtoNumberType.SIGNED) val signed: LongArray) {
+    override fun equals(other: Any?): Boolean = other is TestLongArray
+            && default.contentEquals(other.default)
+            && fixed.contentEquals(other.fixed)
+            && signed.contentEquals(other.signed)
 }
 
 val t1 = TestInt(-150)
@@ -70,5 +84,6 @@ val t3e = TestString("")
 val t4 = TestInner(t1)
 val t5 = TestComplex(42, "testing")
 val t6 = TestNumbers(100500, Long.MAX_VALUE)
-val t7 = TestByteArray(byteArrayOf(0, Byte.MIN_VALUE, Byte.MAX_VALUE))
-val t8 = TestIntArray(intArrayOf(0, Int.MIN_VALUE, Int.MAX_VALUE), intArrayOf(0, Int.MIN_VALUE, Int.MAX_VALUE))
+val testByteARray = TestByteArray(byteArrayOf(0, Byte.MIN_VALUE, Byte.MAX_VALUE))
+val testIntArray = TestIntArray(intArrayOf(0, Int.MIN_VALUE, Int.MAX_VALUE), intArrayOf(1, Int.MIN_VALUE, Int.MAX_VALUE), intArrayOf(2, 0, Int.MAX_VALUE))
+val testLongArray = TestLongArray(longArrayOf(0, Long.MIN_VALUE, Long.MAX_VALUE), longArrayOf(1, Long.MIN_VALUE, Long.MAX_VALUE), longArrayOf(2, 0, Long.MAX_VALUE))

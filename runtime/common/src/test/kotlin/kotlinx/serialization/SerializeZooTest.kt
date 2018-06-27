@@ -16,13 +16,11 @@
 
 package kotlinx.serialization
 
-import kotlinx.io.PrimitiveArrayView
 import kotlinx.io.PrintWriter
 import kotlinx.io.Reader
 import kotlinx.io.StringReader
 import kotlinx.io.StringWriter
 import kotlinx.serialization.internal.ByteArraySerializer
-import kotlinx.serialization.internal.readExactNBytes
 import kotlin.reflect.KClass
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -158,7 +156,7 @@ class SerializeZooTest {
             out.print('"')
         }
 
-        override fun writePrimitiveArrayValue(values: PrimitiveArrayView<*>) {
+        override fun writePrimitiveArrayValue(values: PrimitiveArrayValue<*>) {
             out.print('[')
             out.print(values.iterator().asSequence().joinToString(","))
             out.print(']')
@@ -220,17 +218,17 @@ class SerializeZooTest {
             return value
         }
 
-        override fun <T : Number> readPrimitiveArrayValue(numberClass: KClass<T>): PrimitiveArrayView<T> {
+        override fun <T : Number> readPrimitiveArrayValue(numberClass: KClass<T>): PrimitiveArrayValue<T> {
             inp.expectAfterWhiteSpace('[')
             val value = inp.nextUntil(']')
-            val ans: PrimitiveArrayView<*> = when(numberClass) {
-                Byte::class -> PrimitiveArrayView.adapt(value.split(",").map { it.toByte() }.toByteArray())
-                Int::class -> PrimitiveArrayView.adapt(value.split(",").map { it.toInt() }.toIntArray())
+            val ans: PrimitiveArrayValue<*> = when(numberClass) {
+                Byte::class -> value.split(",").map { it.toByte() }.toPrimitiveArray()
+                Int::class -> value.split(",").map { it.toInt() }.toPrimitiveArray()
                 else -> TODO()
             }
             inp.expect(']')
             @Suppress("UNCHECKED_CAST")
-            return ans as PrimitiveArrayView<T>
+            return ans as PrimitiveArrayValue<T>
         }
 
         override fun readCharValue(): Char = readStringValue().single()
