@@ -55,6 +55,17 @@ class CBOR(val context: SerialContext? = null, val updateMode: UpdateMode = Upda
             context = this@CBOR.context
         }
 
+        private val optimizedWriters: Map<KClass<*>, OptimizedWriter<*>> = mapOf(
+                ByteArray::class to { value: ByteArray ->
+                    encoder.encodeByteArray(value)
+                },
+                IntArray::class to { value: IntArray ->
+                    encoder.encodeIntArray(value)
+                },
+                LongArray::class to { value: LongArray ->
+                    encoder.encodeLongArray(value)
+                })
+
         protected open fun writeBeginToken() = encoder.startMap()
 
         override fun writeBegin(desc: KSerialClassDesc, vararg typeParams: KSerializer<*>): KOutput {
@@ -78,7 +89,6 @@ class CBOR(val context: SerialContext? = null, val updateMode: UpdateMode = Upda
         }
 
         override fun writeStringValue(value: String) = encoder.encodeString(value)
-        override fun writePrimitiveArrayValue(value: PrimitiveArrayValue<*>) = encoder.encodePrimitiveArray(value)
 
         override fun writeFloatValue(value: Float) = encoder.encodeFloat(value)
         override fun writeDoubleValue(value: Double) = encoder.encodeDouble(value)
@@ -92,6 +102,9 @@ class CBOR(val context: SerialContext? = null, val updateMode: UpdateMode = Upda
         override fun writeBooleanValue(value: Boolean) = encoder.encodeBoolean(value)
 
         override fun writeNullValue() = encoder.encodeNull()
+
+        @Suppress("UNCHECKED_CAST")
+        override fun <T : Any> optimizedWriter(type: KClass<T>): OptimizedWriter<T>? = optimizedWriters[type] as? OptimizedWriter<T>
 
         override fun <T : Enum<T>> writeEnumValue(enumClass: KClass<T>, value: T) =
                 encoder.encodeString(value.toString())
@@ -118,22 +131,6 @@ class CBOR(val context: SerialContext? = null, val updateMode: UpdateMode = Upda
             output.write(data)
         }
 
-        fun encodePrimitiveArray(value: PrimitiveArrayValue<*>) {
-            val headerAndSize = composeNumber(value.size.toLong())
-            // byteArray has its own header type
-            val header: Byte = if (value is PrimitiveArrayValue.ByteArrayValue) HEADER_BYTES else HEADER_ARRAY.toByte()
-            headerAndSize[0] = headerAndSize[0] or header
-            output.write(headerAndSize)
-            when (value) {
-                is PrimitiveArrayValue.ByteArrayValue -> output.write(value.array)
-                else -> {
-                    for (numberValue in value) {
-                        output.write(composeNumber(numberValue.toLong()))
-                    }
-                }
-            }
-        }
-
         fun encodeFloat(value: Float) {
             val data = ByteBuffer.allocate(5)
                     .put(NEXT_FLOAT.toByte())
@@ -148,6 +145,31 @@ class CBOR(val context: SerialContext? = null, val updateMode: UpdateMode = Upda
                     .putDouble(value)
                     .array()
             output.write(data)
+        }
+
+        fun encodeByteArray(value: ByteArray) {
+            val headerAndSize = composeNumber(value.size.toLong())
+            headerAndSize[0] = headerAndSize[0] or HEADER_BYTES
+            output.write(headerAndSize)
+            output.write(value)
+        }
+
+        fun encodeIntArray(value: IntArray) {
+            val headerAndSize = composeNumber(value.size.toLong())
+            headerAndSize[0] = headerAndSize[0] or HEADER_ARRAY.toByte()
+            output.write(headerAndSize)
+            for (numberValue in value) {
+                output.write(composeNumber(numberValue.toLong()))
+            }
+        }
+
+        fun encodeLongArray(value: LongArray) {
+            val headerAndSize = composeNumber(value.size.toLong())
+            headerAndSize[0] = headerAndSize[0] or HEADER_ARRAY.toByte()
+            output.write(headerAndSize)
+            for (numberValue in value) {
+                output.write(composeNumber(numberValue))
+            }
         }
 
         private fun composeNumber(value: Long): ByteArray =
@@ -218,6 +240,11 @@ class CBOR(val context: SerialContext? = null, val updateMode: UpdateMode = Upda
             context = this@CBOR.context
         }
 
+        private val optimizedReaders: Map<KClass<*>, OptimizedReader<*>> = mapOf(
+                ByteArray::class to decoder::nextByteArray,
+                IntArray::class to decoder::nextIntArray,
+                LongArray::class to decoder::nextLongArray)
+
         override val updateMode: UpdateMode
             get() = this@CBOR.updateMode
 
@@ -243,8 +270,6 @@ class CBOR(val context: SerialContext? = null, val updateMode: UpdateMode = Upda
         }
 
         override fun readStringValue() = decoder.nextString()
-        override fun <T : Number> readPrimitiveArrayValue(
-                numberClass: KClass<T>): PrimitiveArrayValue<T> = decoder.nextPrimitiveArray(numberClass)
 
         override fun readNotNullMark(): Boolean = !decoder.isNull()
 
@@ -264,6 +289,8 @@ class CBOR(val context: SerialContext? = null, val updateMode: UpdateMode = Upda
         override fun <T : Enum<T>> readEnumValue(enumClass: KClass<T>): T =
                 enumFromName(enumClass, decoder.nextString())
 
+        @Suppress("UNCHECKED_CAST")
+        final override fun <V: Any> optimizedReader(type:KClass<V>): OptimizedReader<V>? = optimizedReaders[type] as? OptimizedReader<V>
     }
 
     class CBORDecoder(val input: InputStream) {
@@ -338,36 +365,31 @@ class CBOR(val context: SerialContext? = null, val updateMode: UpdateMode = Upda
             return ans
         }
 
-        fun <T : Number> nextPrimitiveArray(numberClass: KClass<T>): PrimitiveArrayValue<T> {
-            val ans: PrimitiveArrayValue<*> = if (numberClass == Byte::class) {
-                // byte arrays are written under their own header
-                checkHeader(HEADER_BYTES.toInt(), "start of bytes")
-                readByteArray().asPrimitiveArray()
-            }
-            else {
-                checkHeader(HEADER_ARRAY, "start of array")
-                val arrayLen = nextNumber().toInt()
-                when (numberClass) {
-                    Int::class -> {
-                        val array = IntArray(arrayLen)
-                        for (i in array.indices) {
-                            array[i] = nextNumber().toInt()
-                        }
-                        array.asPrimitiveArray()
-                    }
-                    Long::class -> {
-                        val array = LongArray(arrayLen)
-                        for (i in array.indices) {
-                            array[i] = nextNumber()
-                        }
-                        array.asPrimitiveArray()
-                    }
-                    else -> throw SerializationException("Unknown primitive array type $numberClass")
-                }
-            }
+        fun nextByteArray(): ByteArray {
+            checkHeader(HEADER_BYTES.toInt(), "start of bytes")
+            return readByteArray()
+        }
 
-            @Suppress("UNCHECKED_CAST")
-            return ans as PrimitiveArrayValue<T>
+        fun nextIntArray(): IntArray {
+            // startArray?
+            checkHeader(HEADER_ARRAY, "start of array")
+            val arrayLen = nextNumber().toInt()
+            val array = IntArray(arrayLen)
+            for (i in array.indices) {
+                array[i] = nextNumber().toInt()
+            }
+            return array
+        }
+
+        fun nextLongArray(): LongArray {
+            // startArray?
+            checkHeader(HEADER_ARRAY, "start of array")
+            val arrayLen = nextNumber().toInt()
+            val array = LongArray(arrayLen)
+            for (i in array.indices) {
+                array[i] = nextNumber()
+            }
+            return array
         }
 
         fun nextNumber(): Long {
@@ -470,3 +492,6 @@ class CBOR(val context: SerialContext? = null, val updateMode: UpdateMode = Upda
 }
 
 class CBORParsingException(message: String) : IOException(message)
+
+private typealias OptimizedWriter<T> = (T) -> Unit
+private typealias OptimizedReader<T> = () -> T

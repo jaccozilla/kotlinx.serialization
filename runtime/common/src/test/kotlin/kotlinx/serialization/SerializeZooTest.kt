@@ -156,13 +156,23 @@ class SerializeZooTest {
             out.print('"')
         }
 
-        override fun writePrimitiveArrayValue(values: PrimitiveArrayValue<*>) {
-            out.print('[')
-            out.print(values.iterator().asSequence().joinToString(","))
-            out.print(']')
-        }
-
         override fun writeCharValue(value: Char) = writeStringValue(value.toString())
+
+        override fun <T : Any> optimizedWriter(type: KClass<T>): ((T) -> Unit)? {
+
+            val printer = { iterator: Iterator<*> ->
+                out.print('[')
+                out.print(iterator.asSequence().joinToString(","))
+                out.print(']')
+            }
+
+            return when (type) {
+                ByteArray::class -> { value: T -> printer((value as ByteArray).iterator()) }
+                IntArray::class -> { value: T -> printer((value as IntArray).iterator()) }
+                LongArray::class -> { value: T -> printer((value as LongArray).iterator()) }
+                else -> null
+            }
+        }
     }
 
     class KeyValueInput(val inp: Parser) : ElementValueInput() {
@@ -218,20 +228,25 @@ class SerializeZooTest {
             return value
         }
 
-        override fun <T : Number> readPrimitiveArrayValue(numberClass: KClass<T>): PrimitiveArrayValue<T> {
-            inp.expectAfterWhiteSpace('[')
-            val value = inp.nextUntil(']')
-            val ans: PrimitiveArrayValue<*> = when(numberClass) {
-                Byte::class -> value.split(",").map { it.toByte() }.toPrimitiveArray()
-                Int::class -> value.split(",").map { it.toInt() }.toPrimitiveArray()
-                else -> TODO()
-            }
-            inp.expect(']')
-            @Suppress("UNCHECKED_CAST")
-            return ans as PrimitiveArrayValue<T>
-        }
-
         override fun readCharValue(): Char = readStringValue().single()
+
+        override fun <T : Any> optimizedReader(type: KClass<T>): (() -> T)? {
+
+            val reader = {
+                inp.expectAfterWhiteSpace('[')
+                val value = inp.nextUntil(']')
+                inp.expect(']')
+                value.split(",")
+            }
+
+            @Suppress("UNCHECKED_CAST")
+            return when (type) {
+                ByteArray::class -> { -> reader().map { it.toByte() }.toByteArray() as T}
+                IntArray::class -> { -> reader().map { it.toInt() }.toIntArray() as T }
+                LongArray::class -> { -> reader().map { it.toLong() }.toLongArray() as T }
+                else -> null
+            }
+        }
     }
 
     // Parser

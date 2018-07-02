@@ -26,7 +26,6 @@ annotation class SerialId(val id: Int)
 @Target(AnnotationTarget.PROPERTY)
 annotation class SerialTag(val tag: String)
 
-
 abstract class TaggedOutput<T : Any?> : KOutput() {
     abstract protected fun KSerialClassDesc.getTag(index: Int): T
 
@@ -56,7 +55,6 @@ abstract class TaggedOutput<T : Any?> : KOutput() {
     open fun writeTaggedBoolean(tag: T, value: Boolean) = writeTaggedValue(tag, value)
     open fun writeTaggedChar(tag: T, value: Char) = writeTaggedValue(tag, value)
     open fun writeTaggedString(tag: T, value: String) = writeTaggedValue(tag, value)
-    open fun writeTaggedPrimitiveArray(tag: T, value: PrimitiveArrayValue<*>) = writeTaggedValue(tag, value)
     open fun <E : Enum<E>> writeTaggedEnum(tag: T, enumClass: KClass<E>, value: E) = writeTaggedValue(tag, value)
 
     // ---- Implementation of low-level API ----
@@ -129,13 +127,16 @@ abstract class TaggedOutput<T : Any?> : KOutput() {
         writeTaggedString(popTag(), value)
     }
 
-    override final fun writePrimitiveArrayValue(value: PrimitiveArrayValue<*>) {
-        writeTaggedPrimitiveArray(popTag(), value)
-    }
-
     override final fun <E : Enum<E>> writeEnumValue(enumClass: KClass<E>, value: E) {
         writeTaggedEnum(popTag(), enumClass, value)
     }
+
+    override final fun <V: Any> optimizedWriter(type:KClass<V>): ((V)->Unit)? {
+        val optimizedWriter = optimizedTaggedWriter(type) ?: return null
+        return { optimizedWriter(popTag(), it) }
+    }
+
+    open fun <V: Any> optimizedTaggedWriter(type:KClass<V>): ((tag: T, value: V)->Unit)? = null
 
     override final fun writeEnd(desc: KSerialClassDesc) {
         if (tagStack.isNotEmpty()) popTag(); writeFinished(desc)
@@ -158,7 +159,6 @@ abstract class TaggedOutput<T : Any?> : KOutput() {
     override final fun writeDoubleElementValue(desc: KSerialClassDesc, index: Int, value: Double) = writeTaggedDouble(desc.getTag(index), value)
     override final fun writeCharElementValue(desc: KSerialClassDesc, index: Int, value: Char) = writeTaggedChar(desc.getTag(index), value)
     override final fun writeStringElementValue(desc: KSerialClassDesc, index: Int, value: String) = writeTaggedString(desc.getTag(index), value)
-    override final fun writePrimitiveArrayElementValue(desc: KSerialClassDesc, index: Int, value: PrimitiveArrayValue<*>) = writeTaggedPrimitiveArray(desc.getTag(index), value)
 
     override final fun <E : Enum<E>> writeEnumElementValue(desc: KSerialClassDesc, index: Int, enumClass: KClass<E>, value: E) {
         writeTaggedEnum(desc.getTag(index), enumClass, value)
@@ -224,9 +224,6 @@ abstract class TaggedInput<T : Any?> : KInput() {
     open fun readTaggedDouble(tag: T): Double = readTaggedValue(tag) as Double
     open fun readTaggedChar(tag: T): Char = readTaggedValue(tag) as Char
     open fun readTaggedString(tag: T): String = readTaggedValue(tag) as String
-    @Suppress("UNCHECKED_CAST")
-    open fun <N : Number> readTaggedPrimitiveArray(tag: T, numberClass: KClass<N>): PrimitiveArrayValue<N> =
-            readTaggedValue(tag) as PrimitiveArrayValue<N>
 
     @Suppress("UNCHECKED_CAST")
     open fun <E : Enum<E>> readTaggedEnum(tag: T, enumClass: KClass<E>): E = readTaggedValue(tag) as E
@@ -248,8 +245,12 @@ abstract class TaggedInput<T : Any?> : KInput() {
     override final fun readDoubleValue(): Double = readTaggedDouble(popTag())
     override final fun readCharValue(): Char = readTaggedChar(popTag())
     override final fun readStringValue(): String = readTaggedString(popTag())
-    override final fun <T : Number> readPrimitiveArrayValue(numberClass: KClass<T>): PrimitiveArrayValue<T> = readTaggedPrimitiveArray(popTag(), numberClass)
     override final fun <T : Enum<T>> readEnumValue(enumClass: KClass<T>): T = readTaggedEnum(popTag(), enumClass)
+
+    override final fun <V : Any> optimizedReader(type: KClass<V>): (() -> V)? {
+        val optimizedReader = optimizedTaggedReader(type) ?: return null
+        return { optimizedReader(popTag()) }
+    }
 
     // Override for custom behaviour
     override fun readElement(desc: KSerialClassDesc): Int = READ_ALL
@@ -283,6 +284,8 @@ abstract class TaggedInput<T : Any?> : KInput() {
     override fun <T : Any> updateNullableSerializableElementValue(desc: KSerialClassDesc, index: Int, loader: KSerialLoader<T?>, old: T?): T? {
         return tagBlock(desc.getTag(index)) { updateNullableSerializableValue(loader, desc, old) }
     }
+
+    open fun <V: Any> optimizedTaggedReader(type:KClass<V>): OptimizedTaggedReader<T, V>? = null
 
     private fun <E> tagBlock(tag: T, block: () -> E): E {
         pushTag(tag)
@@ -331,6 +334,8 @@ abstract class NamedValueInput(val rootName: String = "") : TaggedInput<String>(
 
 // =========================================
 
+typealias OptimizedTaggedWriter<T, V> = (tag: T, value: V) -> Unit
+typealias OptimizedTaggedReader<T, V> = (tag: T) -> V
 
 object Mapper {
 
